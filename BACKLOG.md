@@ -21,7 +21,7 @@ O conteúdo é mantido em [`docs/`](docs/), uma página por seção:
 ## Rodar a documentação localmente
 
 ```bash
-pip install -r requirements-docs.txt
+pip install -r requirements.txt
 mkdocs serve
 ```
 
