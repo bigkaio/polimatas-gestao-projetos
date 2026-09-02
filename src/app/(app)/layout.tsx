@@ -2,15 +2,9 @@ import Link from "next/link";
 import { requireSession } from "@/lib/auth";
 import { logoutAction } from "@/app/actions/auth";
 import { NotificationsBell } from "@/components/notifications-bell";
+import { NavLinks } from "@/components/nav-links";
 import { ToastProvider } from "@/components/toast";
 import { initials } from "@/lib/format";
-
-const NAV = [
-  { href: "/board/sales", label: "Pipeline de Vendas" },
-  { href: "/board/projects", label: "Pipeline de Projetos" },
-  { href: "/automations", label: "Automações" },
-  { href: "/compliance", label: "Compliance" },
-];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
@@ -24,15 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               Polímatas <span className="font-normal text-slate-500">Flow</span>
             </Link>
             <nav className="hidden items-center gap-1 md:flex">
-              {NAV.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                >
-                  {item.label}
-                </Link>
-              ))}
+              <NavLinks />
             </nav>
             <div className="ml-auto flex items-center gap-2">
               <NotificationsBell />
@@ -53,15 +39,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </div>
           </div>
           <nav className="flex gap-1 overflow-x-auto border-t border-slate-100 px-2 py-1 md:hidden">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600"
-              >
-                {item.label}
-              </Link>
-            ))}
+            <NavLinks mobile />
           </nav>
         </header>
         <main className="flex-1">{children}</main>
