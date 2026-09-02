@@ -4,6 +4,8 @@ Sistema web para centralizar o funil comercial e a execução de projetos da Pol
 
 Projeto desenvolvido para o **Hackathon Polímatas**.
 
+📖 **[Backlog do produto →](https://bigkaio.github.io/polimatas-gestao-projetos/)** — visão, escopo, arquitetura, épicos e histórias de usuário, plano de sprints e roteiro da demo.
+
 ## Contexto
 
 A Polímatas é uma empresa de tecnologia que hoje controla projetos e vendas de forma dispersa. Conforme o volume de clientes cresce, isso gera retrabalho: venda fechada que demora a virar projeto, tarefa sem responsável, prazo perdido e nenhuma visibilidade do andamento.
@@ -35,6 +37,43 @@ Este sistema conecta o comercial à execução em dois quadros integrados.
 | Banco de dados | Supabase (Postgres) | Plano gratuito, autenticação e banco relacional prontos, setup rápido |
 
 > A stack é livre por definição do desafio; esta é a decisão adotada pelo time por ser o caminho mais curto até um sistema no ar (push no GitHub e o deploy sobe sozinho).
+
+## Arquitetura
+
+Toda escrita passa por uma única porta na camada de domínio. O `ComplianceGuard` avalia as regras **antes** de qualquer persistência: se uma regra bloqueante é violada, nada é gravado e a interface reverte a ação. Só depois de persistir é que o `EventBus` emite o evento que alimenta o motor de automações.
+
+```mermaid
+flowchart TD
+    UI["<b>Navegador</b> — Next.js App Router<br/>Quadros · Drag and drop · Modal do card<br/>Construtor de automações · Painel de compliance"]
+
+    subgraph DOMINIO["CAMADA DE DOMÍNIO (src/core) — única porta de escrita"]
+        direction TB
+        GUARD{"<b>1. ComplianceGuard</b><br/>assert(action, context)"}
+        REPO["<b>2. Repositório</b> (Prisma)<br/>persiste a mutação"]
+        BUS["<b>3. EventBus</b><br/>emite evento de domínio"]
+        ENGINE["<b>4. AutomationEngine</b><br/>Gatilho → Condições → Ações"]
+        NOTIF["<b>5. NotificationService</b><br/>ActivityLog · automation_runs"]
+
+        GUARD -->|"passou"| REPO
+        REPO --> BUS
+        BUS --> ENGINE
+        ENGINE --> NOTIF
+    end
+
+    DB[("<b>Supabase</b><br/>PostgreSQL (RLS) · Auth · Realtime")]
+    CRON["<b>Vercel Cron</b> (15 min)<br/>/api/cron/tick"]
+
+    UI -->|"Server Actions / Route Handlers"| GUARD
+    GUARD -->|"violou → ComplianceError 422<br/>nada é persistido"| UI
+    REPO -->|"Prisma"| DB
+    DB -.->|"Realtime propaga p/ outros usuários"| UI
+    CRON -->|"gatilhos temporais<br/>card.overdue · card.due_soon"| ENGINE
+    ENGINE -->|"ações também passam pelo Guard"| GUARD
+```
+
+O laço de volta do `AutomationEngine` para o `ComplianceGuard` é deliberado: **uma automação não pode furar uma regra de compliance**. Quando isso acontece, a execução é registrada como `blocked_by_compliance` e fica visível no histórico do card.
+
+Detalhamento completo — modelo de dados, motor de automações, motor de compliance e segurança — em **[Arquitetura](https://bigkaio.github.io/polimatas-gestao-projetos/arquitetura/)**.
 
 ## Como rodar localmente
 
