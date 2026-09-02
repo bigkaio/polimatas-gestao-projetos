@@ -66,9 +66,18 @@ A aplicação fica disponível em `http://localhost:3000`.
 - **Produção:** _(link será adicionado quando o deploy estiver publicado)_
 - **Credenciais de teste:** _(a definir)_
 
+## Documentação
+
+- **[Backlog do produto](https://bigkaio.github.io/polimatas-gestao-projetos/)** — visão, escopo, personas, arquitetura, modelo de dados, épicos e histórias de usuário com critérios de aceite, plano de sprints, riscos e roteiro da demo. Publicado no GitHub Pages; fonte em [`docs/`](docs/).
+
 ## Decisões técnicas
 
-_Esta seção será atualizada conforme o desenvolvimento avança, registrando as decisões de arquitetura tomadas pelo time (modelagem do banco, motor de automações, estratégia de compliance, etc.)._
+As decisões de arquitetura estão registradas no [backlog](https://bigkaio.github.io/polimatas-gestao-projetos/stack/#41-decisoes-arquiteturais-registradas-adrs-resumidas) (ADR-01 a ADR-06). Em resumo:
+
+- **Uma única tabela `cards`** com discriminador de tipo (`opportunity` \| `project`), para que os motores de automação e compliance operem sobre uma única abstração e qualquer regra funcione nos dois quadros.
+- **Compliance aplicado no servidor**, na camada de domínio, com constraints de banco como segunda linha — o requisito é bloquear de fato, não avisar na interface.
+- **Regras persistidas em JSONB** e interpretadas em runtime, o que torna as automações configuráveis pelo usuário em vez de fixas no código.
+- **A integração venda → projeto é uma automação nativa** do próprio motor, não um `if` no código.
 
 ## Status do projeto
 

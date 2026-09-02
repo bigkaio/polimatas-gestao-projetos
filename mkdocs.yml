@@ -1,0 +1,73 @@
+site_name: Polímatas Flow — Backlog do Produto
+site_description: Backlog do produto Polímatas Flow — gestão de vendas e projetos (Hackathon Polímatas)
+site_url: https://bigkaio.github.io/polimatas-gestao-projetos/
+repo_url: https://github.com/bigkaio/polimatas-gestao-projetos
+repo_name: bigkaio/polimatas-gestao-projetos
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: pt-BR
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Modo escuro
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Modo claro
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - navigation.sections
+    - toc.follow
+    - content.code.copy
+    - content.action.edit
+    - search.highlight
+    - search.suggest
+
+nav:
+  - Visão do produto: index.md
+  - Escopo: escopo.md
+  - Personas e papéis: personas.md
+  - Stack e ADRs: stack.md
+  - Arquitetura: arquitetura.md
+  - Backlog e histórias: historias.md
+  - Plano de execução: plano.md
+  - Riscos e rastreabilidade: riscos.md
+  - Demo e glossário: demo.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+plugins:
+  - search:
+      lang: pt
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/bigkaio/polimatas-gestao-projetos
