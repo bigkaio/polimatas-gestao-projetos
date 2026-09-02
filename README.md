@@ -77,33 +77,59 @@ Detalhamento completo — modelo de dados, motor de automações, motor de compl
 
 ## Como rodar localmente
 
-Pré-requisitos: Node.js 18+ e uma conta no [Supabase](https://supabase.com) (ou Neon) para o banco de dados.
+Pré-requisitos: Node.js 18+ e Docker (para o Postgres local — em produção o banco é o Postgres do Supabase, mesmo dialeto e mesmas migrações).
 
 ```bash
 # clonar o repositório
 git clone https://github.com/bigkaio/polimatas-gestao-projetos.git
 cd polimatas-gestao-projetos
 
-# instalar dependências
+# subir o Postgres local
+docker run -d --name polimatas-pg -e POSTGRES_PASSWORD=polimatas \
+  -e POSTGRES_DB=polimatas -p 5432:5432 postgres:16-alpine
+
+# instalar dependências e configurar o ambiente
 npm install
+cp .env.example .env   # os valores padrão já apontam para o Postgres do Docker
 
-# configurar variáveis de ambiente
-cp .env.example .env.local
-# preencher DATABASE_URL / SUPABASE_URL / SUPABASE_ANON_KEY com as credenciais do seu projeto
-
-# rodar as migrações do banco
+# migrar o banco e popular os dados de demonstração (idempotente)
 npm run db:migrate
+npm run db:seed
 
-# subir o servidor de desenvolvimento
+# subir o servidor
 npm run dev
 ```
 
-A aplicação fica disponível em `http://localhost:3000`.
+A aplicação fica em `http://localhost:3000`. Os testes dos motores e do fluxo venda → projeto rodam com `npm test` (exigem o banco migrado e o seed executado).
+
+Para disparar os gatilhos temporais manualmente (em produção o Vercel Cron chama a cada 15 min):
+
+```bash
+curl -H "Authorization: Bearer dev-cron-secret" http://localhost:3000/api/cron/tick
+```
+
+## Credenciais de teste
+
+Um usuário por papel, senha `polimatas123` para todos:
+
+| Papel | E-mail | O que pode fazer |
+|---|---|---|
+| Admin | `admin@polimatas.dev` | Tudo, inclusive regras de compliance |
+| Gestor | `gestor@polimatas.dev` | Quadros, projetos e automações |
+| Vendas | `vendas@polimatas.dev` | Criar e mover oportunidades |
+| Executor | `executor@polimatas.dev` | Ver quadros e concluir tarefas dos seus cards |
 
 ## Deploy
 
 - **Produção:** _(link será adicionado quando o deploy estiver publicado)_
-- **Credenciais de teste:** _(a definir)_
+- Passos: criar um projeto no [Supabase](https://supabase.com), importar o repositório no [Vercel](https://vercel.com) e configurar as variáveis `DATABASE_URL` (connection pooling), `DIRECT_URL` (conexão direta), `SESSION_SECRET` e `CRON_SECRET`. O `vercel.json` já agenda o cron de gatilhos temporais; as migrações rodam com `npx prisma migrate deploy` e o seed com `npm run db:seed`.
+
+## Adaptações registradas
+
+Duas trocas em relação ao backlog, impostas pelo ambiente de desenvolvimento (sem projeto Supabase disponível), ambas isoladas para reversão fácil:
+
+- **Autenticação**: e-mail + senha com hash bcrypt e sessão JWT em cookie httpOnly, em vez de Supabase Auth. Todo o mecanismo vive em [`src/lib/auth.ts`](src/lib/auth.ts); a matriz de papéis continua aplicada na camada de domínio, que é onde o bloqueio real acontece.
+- **Tempo real**: quadro e notificações atualizam por polling leve (10–15 s), em vez de Supabase Realtime.
 
 ## Documentação
 
@@ -120,7 +146,7 @@ As decisões de arquitetura estão registradas no [backlog](https://bigkaio.gith
 
 ## Status do projeto
 
-🚧 Em desenvolvimento — repositório inicial criado a partir do briefing do desafio.
+✅ Funcional — dois quadros com drag and drop, integração automática venda → projeto, motor de automações configurável pela interface (gatilho → condições → ações), motor de compliance bloqueante em três camadas (UI, servidor e trigger no Postgres), gatilhos temporais via cron, notificações, histórico auditável e seed de demonstração. Motores e fluxo central cobertos por 12 testes automatizados (`npm test`).
 
 ## Critérios de avaliação
 

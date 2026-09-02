@@ -1,0 +1,247 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  admin
+  manager
+  sales
+  member
+}
+
+enum BoardKey {
+  sales
+  projects
+}
+
+enum CardType {
+  opportunity
+  project
+}
+
+enum ListSemantics {
+  won
+  lost
+  done
+  late
+}
+
+enum RunStatus {
+  success
+  skipped
+  error
+  blocked_by_compliance
+}
+
+enum Severity {
+  block
+  warn
+}
+
+model Profile {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  role         Role     @default(member)
+  avatarUrl    String?  @map("avatar_url")
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  assignedCards Card[]         @relation("CardAssignee")
+  createdCards  Card[]         @relation("CardCreator")
+  assignedTasks Task[]
+  notifications Notification[]
+  activities    ActivityLog[]
+  violations    ComplianceViolation[]
+
+  @@map("profiles")
+}
+
+model Board {
+  id    String   @id @default(uuid())
+  key   BoardKey @unique
+  name  String
+  type  CardType
+
+  lists       List[]
+  cards       Card[]
+  automations Automation[]
+
+  @@map("boards")
+}
+
+model List {
+  id         String         @id @default(uuid())
+  boardId    String         @map("board_id")
+  name       String
+  stageKey   String         @map("stage_key")
+  position   Int
+  isTerminal Boolean        @default(false) @map("is_terminal")
+  semantics  ListSemantics?
+
+  board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards Card[]
+
+  @@unique([boardId, stageKey])
+  @@map("lists")
+}
+
+model Card {
+  id           String    @id @default(uuid())
+  boardId      String    @map("board_id")
+  listId       String    @map("list_id")
+  type         CardType
+  title        String
+  description  String?
+  position     Float
+  assigneeId   String?   @map("assignee_id")
+  dueDate      DateTime? @map("due_date") @db.Date
+  clientName   String?   @map("client_name")
+  clientEmail  String?   @map("client_email")
+  clientPhone  String?   @map("client_phone")
+  amount       Decimal?  @db.Decimal(12, 2)
+  lossReason   String?   @map("loss_reason")
+  sourceCardId String?   @unique @map("source_card_id")
+  createdBy    String    @map("created_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  archivedAt   DateTime? @map("archived_at")
+
+  board      Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  list       List     @relation(fields: [listId], references: [id])
+  assignee   Profile? @relation("CardAssignee", fields: [assigneeId], references: [id])
+  creator    Profile  @relation("CardCreator", fields: [createdBy], references: [id])
+  sourceCard Card?    @relation("SourceCard", fields: [sourceCardId], references: [id])
+  spawned    Card?    @relation("SourceCard")
+
+  tasks      Task[]
+  activities ActivityLog[]
+  runs       AutomationRun[]
+  violations ComplianceViolation[]
+  notifications Notification[]
+
+  @@index([listId, position])
+  @@index([assigneeId])
+  @@index([dueDate])
+  @@map("cards")
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  cardId      String    @map("card_id")
+  title       String
+  done        Boolean   @default(false)
+  dueDate     DateTime  @map("due_date") @db.Date
+  assigneeId  String?   @map("assignee_id")
+  position    Float
+  completedAt DateTime? @map("completed_at")
+
+  card     Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  assignee Profile? @relation(fields: [assigneeId], references: [id])
+
+  @@index([cardId, done])
+  @@map("tasks")
+}
+
+model Automation {
+  id         String  @id @default(uuid())
+  name       String
+  enabled    Boolean @default(true)
+  isSystem   Boolean @default(false) @map("is_system")
+  boardId    String? @map("board_id")
+  trigger    Json
+  conditions Json
+  actions    Json
+  createdBy  String? @map("created_by")
+
+  board Board?          @relation(fields: [boardId], references: [id])
+  runs  AutomationRun[]
+
+  @@index([enabled])
+  @@map("automations")
+}
+
+model AutomationRun {
+  id           String    @id @default(uuid())
+  automationId String    @map("automation_id")
+  cardId       String?   @map("card_id")
+  status       RunStatus
+  eventKey     String?   @map("event_key")
+  payload      Json?
+  error        String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  automation Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  card       Card?      @relation(fields: [cardId], references: [id], onDelete: SetNull)
+
+  @@unique([automationId, cardId, eventKey])
+  @@map("automation_runs")
+}
+
+model ComplianceRule {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  name      String
+  scope     String
+  condition Json
+  message   String
+  severity  Severity @default(block)
+  enabled   Boolean  @default(true)
+  isSystem  Boolean  @default(false) @map("is_system")
+
+  violations ComplianceViolation[]
+
+  @@map("compliance_rules")
+}
+
+model ComplianceViolation {
+  id              String   @id @default(uuid())
+  ruleId          String   @map("rule_id")
+  cardId          String?  @map("card_id")
+  actorId         String?  @map("actor_id")
+  attemptedAction Json     @map("attempted_action")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  rule  ComplianceRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  card  Card?          @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  actor Profile?       @relation(fields: [actorId], references: [id])
+
+  @@map("compliance_violations")
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  cardId    String?   @map("card_id")
+  message   String
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card Card?   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  cardId    String   @map("card_id")
+  actorId   String?  @map("actor_id")
+  action    String
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  card  Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  actor Profile? @relation(fields: [actorId], references: [id])
+
+  @@index([cardId, createdAt])
+  @@map("activity_log")
+}
