@@ -14,7 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="flex min-h-screen flex-col">
         <header className="sticky top-0 z-40 border-b border-white/10 bg-black/70 backdrop-blur-md">
           <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-4 px-4">
-            <Link href="/" className="flex shrink-0 items-center gap-2">
+            <Link href="/inicio" className="flex shrink-0 items-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.svg" alt="" className="h-7 w-auto" />
               <span className="text-lg font-medium text-white">

@@ -22,7 +22,7 @@ export async function loginAction(
 
   const session = await login(parsed.data.email, parsed.data.password);
   if (!session) return { error: "E-mail ou senha incorretos." };
-  redirect("/");
+  redirect("/inicio");
 }
 
 export async function logoutAction(): Promise<void> {

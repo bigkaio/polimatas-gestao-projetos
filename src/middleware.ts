@@ -5,6 +5,7 @@ const PUBLIC_PATHS = ["/login", "/api/cron"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (pathname === "/") return NextResponse.next(); // landing pública
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return NextResponse.next();
 
   const token = request.cookies.get("polimatas_session")?.value;
