@@ -10,6 +10,59 @@ const NAV = [
 
 const eyebrow = "text-xs font-semibold uppercase tracking-widest text-cyan-400";
 
+/** Ícones outline (guia seção 6): linha fina, sem preenchimento, cor ciano. */
+const ICON_PROPS = {
+  width: 20,
+  height: 20,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.6,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+};
+
+const FEATURE_ICONS = {
+  sync: (
+    <svg {...ICON_PROPS}>
+      <path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3" />
+      <path d="M18 3v4h-4M6 21v-4h4" />
+    </svg>
+  ),
+  automation: (
+    <svg {...ICON_PROPS}>
+      <rect x="4" y="4" width="6" height="6" rx="1.5" />
+      <rect x="14" y="14" width="6" height="6" rx="1.5" />
+      <path d="M10 7h4a3 3 0 0 1 3 3v4M14 17h-4a3 3 0 0 1-3-3V10" />
+    </svg>
+  ),
+  shield: (
+    <svg {...ICON_PROPS}>
+      <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
+      <path d="M9 12l2 2 4-4" />
+    </svg>
+  ),
+  board: (
+    <svg {...ICON_PROPS}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16M15 4v16" />
+    </svg>
+  ),
+  bell: (
+    <svg {...ICON_PROPS}>
+      <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.7 21a2 2 0 01-3.4 0" />
+    </svg>
+  ),
+  audit: (
+    <svg {...ICON_PROPS}>
+      <path d="M9 4h6a1 1 0 011 1v1H8V5a1 1 0 011-1z" />
+      <rect x="5" y="6" width="14" height="15" rx="2" />
+      <path d="M9 12h6M9 16h6" />
+    </svg>
+  ),
+} as const;
+
 /** Landing pública: contextualiza o sistema antes do login. */
 export default async function LandingPage() {
   const session = await getSession();
@@ -39,18 +92,29 @@ export default async function LandingPage() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2 md:ml-0">
-            <Link
-              href="/login"
-              className="rounded-full border border-white/15 px-4 py-1.5 text-sm font-medium text-gray-200 hover:bg-white/10"
-            >
-              Entrar
-            </Link>
-            <Link
-              href={appHref}
-              className="rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-black hover:bg-gray-200"
-            >
-              {session ? "Abrir o sistema" : "Acessar o sistema"}
-            </Link>
+            {session ? (
+              <Link
+                href={appHref}
+                className="rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-black hover:bg-gray-200"
+              >
+                Abrir o sistema
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="rounded-full border border-white/15 px-4 py-1.5 text-sm font-medium text-gray-200 hover:bg-white/10"
+                >
+                  Entrar
+                </Link>
+                <Link
+                  href="/cadastro"
+                  className="rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-black hover:bg-gray-200"
+                >
+                  Cadastrar-se
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -77,12 +141,6 @@ export default async function LandingPage() {
           >
             {session ? "Abrir o sistema" : "Acessar o sistema"}
           </Link>
-          <a
-            href="#como-funciona"
-            className="rounded-full border border-white/15 px-6 py-3 text-sm font-medium text-gray-200 hover:bg-white/10"
-          >
-            Ver como funciona →
-          </a>
         </div>
         <p className="mt-6 text-xs text-gray-500">
           Credenciais de demonstração na tela de login • Nenhuma instalação necessária
@@ -122,44 +180,44 @@ export default async function LandingPage() {
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {[
               {
-                icon: "⚡",
+                icon: FEATURE_ICONS.sync,
                 title: "Integração venda → projeto",
                 cyan: "automática",
                 text: "Venda marcada como Fechada vira card de projeto em menos de 2 segundos, herdando cliente, valor, descrição e responsável — com rastreabilidade nos dois sentidos.",
               },
               {
-                icon: "🔁",
+                icon: FEATURE_ICONS.automation,
                 title: "Automações sem",
                 cyan: "código",
                 text: "Monte regras em 3 passos (Quando → Se → Então) escolhendo opções em telas: notificar, mover, atribuir, criar tarefa. Com gatilhos temporais para prazos e atrasos.",
               },
               {
-                icon: "🛡️",
+                icon: FEATURE_ICONS.shield,
                 title: "Compliance que",
                 cyan: "bloqueia",
                 text: "Regras impostas no servidor: nenhuma tarefa sem prazo, nenhum projeto concluído com pendências. Não é aviso — a ação é recusada e tudo fica auditado.",
               },
               {
-                icon: "🗂️",
+                icon: FEATURE_ICONS.board,
                 title: "Quadros com",
                 cyan: "drag and drop",
                 text: "Cards com responsável, prazo, checklist e histórico. Arraste entre listas com atualização otimista; destino inválido é sinalizado antes do drop.",
               },
               {
-                icon: "🔔",
+                icon: FEATURE_ICONS.bell,
                 title: "Notificações no",
                 cyan: "momento certo",
                 text: "Central de avisos alimentada pelas automações: card em revisão, tarefa vencida, projeto criado. Cada aviso leva direto ao card.",
               },
               {
-                icon: "📋",
+                icon: FEATURE_ICONS.audit,
                 title: "Tudo",
                 cyan: "auditável",
                 text: "Histórico por card, log de execuções das automações e registro de cada bloqueio de compliance — quem tentou, o quê e quando.",
               },
             ].map((f) => (
               <div key={f.title} className="rounded-2xl border border-white/10 bg-[#141413] p-5">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-lg">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-cyan-400">
                   {f.icon}
                 </span>
                 <h3 className="mt-3 font-medium text-white">

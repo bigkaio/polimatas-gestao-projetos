@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC_PATHS = ["/login", "/api/cron"];
+const PUBLIC_PATHS = ["/login", "/cadastro", "/api/cron"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

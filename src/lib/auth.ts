@@ -18,13 +18,7 @@ const secret = () => new TextEncoder().encode(process.env.SESSION_SECRET ?? "dev
 
 export type Session = { userId: string; role: Actor["role"]; name: string; email: string };
 
-export async function login(email: string, password: string): Promise<Session | null> {
-  const user = await prisma.profile.findUnique({ where: { email: email.toLowerCase().trim() } });
-  if (!user) return null;
-  const ok = await bcrypt.compare(password, user.passwordHash);
-  if (!ok) return null;
-
-  const session: Session = { userId: user.id, role: user.role, name: user.name, email: user.email };
+async function startSession(session: Session): Promise<void> {
   const token = await new SignJWT(session as unknown as Record<string, unknown>)
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("7d")
@@ -36,6 +30,36 @@ export async function login(email: string, password: string): Promise<Session | 
     maxAge: 60 * 60 * 24 * 7,
     path: "/",
   });
+}
+
+export async function login(email: string, password: string): Promise<Session | null> {
+  const user = await prisma.profile.findUnique({ where: { email: email.toLowerCase().trim() } });
+  if (!user) return null;
+  const ok = await bcrypt.compare(password, user.passwordHash);
+  if (!ok) return null;
+
+  const session: Session = { userId: user.id, role: user.role, name: user.name, email: user.email };
+  await startSession(session);
+  return session;
+}
+
+/** Auto-cadastro: papel padrão `member` (US-03), como no primeiro acesso via Supabase Auth. */
+export async function signup(
+  name: string,
+  email: string,
+  password: string
+): Promise<Session | { error: string }> {
+  const normalizedEmail = email.toLowerCase().trim();
+  const existing = await prisma.profile.findUnique({ where: { email: normalizedEmail } });
+  if (existing) return { error: "Já existe uma conta com este e-mail." };
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = await prisma.profile.create({
+    data: { name: name.trim(), email: normalizedEmail, passwordHash, role: "member" },
+  });
+
+  const session: Session = { userId: user.id, role: user.role, name: user.name, email: user.email };
+  await startSession(session);
   return session;
 }
 
