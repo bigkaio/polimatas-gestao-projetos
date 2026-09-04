@@ -7,10 +7,10 @@ import clsx from "clsx";
 export const dynamic = "force-dynamic";
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  success: { label: "sucesso", cls: "bg-emerald-100 text-emerald-700" },
-  skipped: { label: "ignorada", cls: "bg-slate-100 text-slate-600" },
-  error: { label: "erro", cls: "bg-red-100 text-red-700" },
-  blocked_by_compliance: { label: "bloqueada pelo compliance", cls: "bg-amber-100 text-amber-800" },
+  success: { label: "sucesso", cls: "bg-emerald-400/15 text-emerald-300" },
+  skipped: { label: "ignorada", cls: "bg-white/10 text-gray-300" },
+  error: { label: "erro", cls: "bg-red-500/15 text-red-300" },
+  blocked_by_compliance: { label: "bloqueada pelo compliance", cls: "bg-amber-400/15 text-amber-300" },
 };
 
 /** Histórico de execuções (US-28), com filtro por regra e por status. */
@@ -41,35 +41,35 @@ export default async function RunsPage({
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Execuções de automações</h1>
-          <p className="text-sm text-slate-500">Tudo o que o motor fez — auditável, para confiar (ou depurar).</p>
+          <h1 className="text-3xl font-light tracking-tight text-white">Execuções de automações</h1>
+          <p className="text-sm text-gray-400">Tudo o que o motor fez — auditável, para confiar (ou depurar).</p>
         </div>
-        <Link href="/automations" className="text-sm text-indigo-600 hover:underline">
+        <Link href="/automations" className="text-sm text-cyan-400 hover:underline">
           ← Automações
         </Link>
       </div>
 
       <form method="get" className="mt-4 flex flex-wrap gap-2">
-        <select name="automation" defaultValue={searchParams.automation ?? ""} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+        <select name="automation" defaultValue={searchParams.automation ?? ""} className="rounded-lg border border-white/15 px-2 py-1.5 text-sm">
           <option value="">Todas as regras</option>
           {automations.map((a) => (
             <option key={a.id} value={a.id}>{a.name}</option>
           ))}
         </select>
-        <select name="status" defaultValue={searchParams.status ?? ""} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+        <select name="status" defaultValue={searchParams.status ?? ""} className="rounded-lg border border-white/15 px-2 py-1.5 text-sm">
           <option value="">Todos os status</option>
           {Object.entries(STATUS_LABEL).map(([k, v]) => (
             <option key={k} value={k}>{v.label}</option>
           ))}
         </select>
-        <button type="submit" className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-medium text-white">
+        <button type="submit" className="rounded-full bg-[#141413] px-4 py-1.5 text-sm font-semibold text-black hover:bg-gray-200">
           Filtrar
         </button>
       </form>
 
-      <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+      <div className="mt-4 overflow-x-auto rounded-2xl border border-white/10 bg-[#141413]">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+          <thead className="bg-[#141413]/5 text-left text-xs uppercase tracking-wide text-gray-400">
             <tr>
               <th className="px-4 py-3">Quando</th>
               <th className="px-4 py-3">Regra</th>
@@ -78,10 +78,10 @@ export default async function RunsPage({
               <th className="px-4 py-3">Detalhe</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-white/5">
             {runs.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={5} className="px-4 py-10 text-center text-gray-500">
                   Nenhuma execução ainda — mova um card ou espere o próximo tick temporal.
                 </td>
               </tr>
@@ -90,7 +90,7 @@ export default async function RunsPage({
                 const status = STATUS_LABEL[run.status] ?? STATUS_LABEL.success!;
                 return (
                   <tr key={run.id}>
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-500" title={dateBR(run.createdAt)}>
+                    <td className="whitespace-nowrap px-4 py-3 text-gray-400" title={dateBR(run.createdAt)}>
                       {relativeTime(run.createdAt)}
                     </td>
                     <td className="px-4 py-3 font-medium">{run.automation.name}</td>
@@ -98,7 +98,7 @@ export default async function RunsPage({
                       {run.card ? (
                         <Link
                           href={`/board/${run.card.board.key}/card/${run.card.id}`}
-                          className="text-indigo-600 hover:underline"
+                          className="text-cyan-400 hover:underline"
                         >
                           {run.card.title}
                         </Link>
@@ -111,7 +111,7 @@ export default async function RunsPage({
                         {status.label}
                       </span>
                     </td>
-                    <td className="max-w-md px-4 py-3 text-xs text-slate-500">{run.error ?? "—"}</td>
+                    <td className="max-w-md px-4 py-3 text-xs text-gray-400">{run.error ?? "—"}</td>
                   </tr>
                 );
               })

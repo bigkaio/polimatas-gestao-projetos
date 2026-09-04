@@ -32,9 +32,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             key={t.id}
             className={clsx(
               "rounded-lg border px-4 py-3 text-sm shadow-lg",
-              t.kind === "error" && "border-red-300 bg-red-50 text-red-800",
-              t.kind === "success" && "border-emerald-300 bg-emerald-50 text-emerald-800",
-              t.kind === "info" && "border-slate-300 bg-white text-slate-800"
+              t.kind === "error" && "border-red-400/30 bg-red-500/10 text-red-300",
+              t.kind === "success" && "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
+              t.kind === "info" && "border-white/15 bg-[#1F2937] text-gray-200"
             )}
           >
             {t.message}

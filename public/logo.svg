@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" role="img" aria-label="Polímatas">
+  <defs>
+    <linearGradient id="hare" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#67E8F9"/>
+      <stop offset="0.55" stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#0891B2"/>
+    </linearGradient>
+  </defs>
+  <!-- camada de trás (tons escuros dão profundidade) -->
+  <ellipse cx="485" cy="265" rx="60" ry="13" transform="rotate(48 485 265)" fill="#0E7490"/>
+  <ellipse cx="180" cy="287" rx="82" ry="14" transform="rotate(-31 180 287)" fill="#0E7490"/>
+  <ellipse cx="455" cy="108" rx="66" ry="13" transform="rotate(15 455 108)" fill="#0E7490"/>
+  <!-- corpo em salto -->
+  <ellipse cx="330" cy="200" rx="150" ry="75" transform="rotate(-12 330 200)" fill="url(#hare)"/>
+  <circle cx="245" cy="195" r="70" fill="url(#hare)"/>
+  <circle cx="470" cy="160" r="55" fill="url(#hare)"/>
+  <!-- cabeça e focinho -->
+  <ellipse cx="540" cy="145" rx="45" ry="35" transform="rotate(15 540 145)" fill="url(#hare)"/>
+  <circle cx="580" cy="155" r="12" fill="url(#hare)"/>
+  <!-- orelha principal, rebatida para trás -->
+  <ellipse cx="445" cy="85" rx="78" ry="15" transform="rotate(21 445 85)" fill="url(#hare)"/>
+  <!-- patas dianteira e traseira -->
+  <ellipse cx="527" cy="257" rx="72" ry="14" transform="rotate(37 527 257)" fill="url(#hare)"/>
+  <ellipse cx="150" cy="270" rx="90" ry="16" transform="rotate(-27 150 270)" fill="url(#hare)"/>
+  <!-- cauda -->
+  <circle cx="203" cy="148" r="19" fill="url(#hare)"/>
+  <!-- olho -->
+  <circle cx="548" cy="140" r="8" fill="#083344"/>
+</svg>

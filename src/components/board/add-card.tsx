@@ -19,7 +19,7 @@ export function AddCard({ listId, isOpportunity }: { listId: string; isOpportuni
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-500 hover:bg-slate-200/70 hover:text-slate-700"
+        className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-400 hover:bg-white/10 hover:text-gray-200"
       >
         + Adicionar
       </button>
@@ -46,14 +46,14 @@ export function AddCard({ listId, isOpportunity }: { listId: string; isOpportuni
   };
 
   return (
-    <div className="space-y-2 rounded-lg bg-white p-2 shadow">
+    <div className="space-y-2 rounded-lg border border-white/10 bg-[#1F2937] p-2 shadow">
       <input
         autoFocus
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && void submit()}
         placeholder={isOpportunity ? "Título da oportunidade" : "Título do card"}
-        className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+        className="w-full rounded-md border border-white/15 px-2 py-1.5 text-sm focus:border-cyan-400 focus:outline-none"
       />
       {isOpportunity ? (
         <input
@@ -61,7 +61,7 @@ export function AddCard({ listId, isOpportunity }: { listId: string; isOpportuni
           onChange={(e) => setClient(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && void submit()}
           placeholder="Nome do cliente (obrigatório)"
-          className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+          className="w-full rounded-md border border-white/15 px-2 py-1.5 text-sm focus:border-cyan-400 focus:outline-none"
         />
       ) : null}
       <div className="flex gap-2">
@@ -69,14 +69,14 @@ export function AddCard({ listId, isOpportunity }: { listId: string; isOpportuni
           type="button"
           onClick={() => void submit()}
           disabled={saving}
-          className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+          className="rounded-full bg-cyan-500 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
         >
           {saving ? "Criando…" : "Criar"}
         </button>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded-md px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-100"
+          className="rounded-md px-3 py-1.5 text-sm text-gray-400 hover:bg-white/10"
         >
           Cancelar
         </button>

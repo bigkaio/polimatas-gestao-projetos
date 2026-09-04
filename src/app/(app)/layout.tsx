@@ -12,10 +12,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <ToastProvider>
       <div className="flex min-h-screen flex-col">
-        <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
+        <header className="sticky top-0 z-40 border-b border-white/10 bg-black/70 backdrop-blur-md">
           <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-4 px-4">
-            <Link href="/" className="shrink-0 text-lg font-bold text-indigo-700">
-              Polímatas <span className="font-normal text-slate-500">Flow</span>
+            <Link href="/" className="flex shrink-0 items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.svg" alt="" className="h-7 w-auto" />
+              <span className="text-lg font-medium text-white">
+                Polímatas <span className="font-light text-cyan-400">Flow</span>
+              </span>
             </Link>
             <nav className="hidden items-center gap-1 md:flex">
               <NavLinks />
@@ -24,21 +28,21 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <NotificationsBell />
               <div
                 title={`${session.name} (${session.role})`}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500 text-xs font-bold text-black"
               >
                 {initials(session.name)}
               </div>
               <form action={logoutAction}>
                 <button
                   type="submit"
-                  className="rounded-lg px-2 py-1.5 text-sm text-slate-500 hover:bg-slate-100"
+                  className="rounded-lg px-2 py-1.5 text-sm text-gray-400 hover:bg-white/10"
                 >
                   Sair
                 </button>
               </form>
             </div>
           </div>
-          <nav className="flex gap-1 overflow-x-auto border-t border-slate-100 px-2 py-1 md:hidden">
+          <nav className="flex gap-1 overflow-x-auto border-t border-white/5 px-2 py-1 md:hidden">
             <NavLinks mobile />
           </nav>
         </header>

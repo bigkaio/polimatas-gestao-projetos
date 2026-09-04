@@ -101,15 +101,15 @@ export function AutomationsPage({
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Automações</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-3xl font-light tracking-tight text-white">Automações</h1>
+          <p className="text-sm text-gray-400">
             O que o sistema faz sozinho — regras criadas aqui, sem escrever código.
           </p>
         </div>
         <div className="flex gap-2">
           <a
             href="/automations/runs"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 hover:bg-[#141413]/5"
           >
             Histórico de execuções
           </a>
@@ -117,7 +117,7 @@ export function AutomationsPage({
             <button
               type="button"
               onClick={() => openEdit(null)}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              className="rounded-full bg-cyan-500 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-400"
             >
               + Nova automação
             </button>
@@ -127,19 +127,19 @@ export function AutomationsPage({
 
       <ul className="mt-6 space-y-3">
         {automations.map((a) => (
-          <li key={a.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <li key={a.id} className="rounded-2xl border border-white/10 bg-[#141413] p-4 shadow-sm">
             <div className="flex flex-wrap items-start gap-3">
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">
                   {a.name}
                   {a.isSystem ? (
-                    <span className="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                    <span className="ml-2 rounded-full bg-cyan-400/15 px-2 py-0.5 text-xs font-medium text-cyan-300">
                       nativa
                     </span>
                   ) : null}
                 </p>
-                <p className="mt-1 text-sm text-slate-600">{describe(a)}</p>
-                <p className="mt-1 text-xs text-slate-400">{a.runCount} execução(ões)</p>
+                <p className="mt-1 text-sm text-gray-300">{describe(a)}</p>
+                <p className="mt-1 text-xs text-gray-500">{a.runCount} execução(ões)</p>
               </div>
               {canManage ? (
                 <div className="flex items-center gap-1">
@@ -155,12 +155,12 @@ export function AutomationsPage({
                     }}
                     className={clsx(
                       "relative h-6 w-11 rounded-full transition",
-                      a.enabled ? "bg-emerald-500" : "bg-slate-300"
+                      a.enabled ? "bg-emerald-500" : "bg-white/20"
                     )}
                   >
                     <span
                       className={clsx(
-                        "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all",
+                        "absolute top-0.5 h-5 w-5 rounded-full bg-[#141413] shadow transition-all",
                         a.enabled ? "left-[22px]" : "left-0.5"
                       )}
                     />
@@ -172,14 +172,14 @@ export function AutomationsPage({
                       setTestCard("");
                       setTestResult(null);
                     }}
-                    className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100"
+                    className="rounded-lg px-2 py-1 text-sm text-gray-400 hover:bg-white/10"
                   >
                     Testar
                   </button>
                   <button
                     type="button"
                     onClick={() => openEdit(a)}
-                    className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100"
+                    className="rounded-lg px-2 py-1 text-sm text-gray-400 hover:bg-white/10"
                   >
                     Editar
                   </button>
@@ -190,7 +190,7 @@ export function AutomationsPage({
                       if (!r.ok) toast(r.error, "error");
                       refresh();
                     }}
-                    className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100"
+                    className="rounded-lg px-2 py-1 text-sm text-gray-400 hover:bg-white/10"
                   >
                     Duplicar
                   </button>
@@ -202,7 +202,7 @@ export function AutomationsPage({
                         if (!r.ok) toast(r.error, "error");
                         refresh();
                       }}
-                      className="rounded-lg px-2 py-1 text-sm text-red-500 hover:bg-red-50"
+                      className="rounded-lg px-2 py-1 text-sm text-red-400 hover:bg-red-500/10"
                     >
                       Excluir
                     </button>
@@ -215,16 +215,16 @@ export function AutomationsPage({
       </ul>
 
       {testing ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-            <h2 className="text-lg font-bold">Testar “{testing.name}”</h2>
-            <p className="mt-1 text-sm text-slate-500">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#141420] p-6 shadow-2xl">
+            <h2 className="text-xl font-light text-white">Testar “{testing.name}”</h2>
+            <p className="mt-1 text-sm text-gray-400">
               Simulação: mostra o que a regra <strong>faria</strong> com o card escolhido — nada é executado.
             </p>
             <select
               value={testCard}
               onChange={(e) => setTestCard(e.target.value)}
-              className="mt-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="mt-4 w-full rounded-lg border border-white/15 px-3 py-2 text-sm"
             >
               <option value="">Escolha um card…</option>
               {cards.map((c) => (
@@ -237,7 +237,7 @@ export function AutomationsPage({
               <div
                 className={clsx(
                   "mt-4 rounded-lg p-3 text-sm",
-                  testResult.matched ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"
+                  testResult.matched ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"
                 )}
               >
                 {testResult.matched ? (
@@ -258,7 +258,7 @@ export function AutomationsPage({
               <button
                 type="button"
                 onClick={() => setTesting(null)}
-                className="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100"
+                className="rounded-full px-4 py-2 text-sm text-gray-300 hover:bg-[#141413]/10"
               >
                 Fechar
               </button>
@@ -276,7 +276,7 @@ export function AutomationsPage({
                     lines: r.data!.outcomes.map((o) => o.detail ?? o.action),
                   });
                 }}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                className="rounded-full bg-cyan-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               >
                 Simular
               </button>

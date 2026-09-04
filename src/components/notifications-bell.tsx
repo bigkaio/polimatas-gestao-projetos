@@ -57,7 +57,7 @@ export function NotificationsBell() {
         type="button"
         aria-label={`Notificações${unread ? ` — ${unread} não lida(s)` : ""}`}
         onClick={() => setOpen((o) => !o)}
-        className="relative rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+        className="relative rounded-lg p-2 text-gray-300 hover:bg-white/10"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -71,13 +71,13 @@ export function NotificationsBell() {
       </button>
 
       {open ? (
-        <div className="absolute right-0 z-50 mt-2 w-96 max-w-[90vw] rounded-xl border border-slate-200 bg-white shadow-xl">
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+        <div className="absolute right-0 z-50 mt-2 w-96 max-w-[90vw] rounded-xl border border-white/10 bg-[#141420] shadow-xl">
+          <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
             <p className="font-semibold">Notificações</p>
             {unread > 0 ? (
               <button
                 type="button"
-                className="text-xs font-medium text-indigo-600 hover:underline"
+                className="text-xs font-medium text-cyan-400 hover:underline"
                 onClick={async () => {
                   await markAllNotificationsReadAction();
                   await load();
@@ -89,22 +89,22 @@ export function NotificationsBell() {
           </div>
           <ul className="max-h-96 overflow-y-auto">
             {items.length === 0 ? (
-              <li className="px-4 py-8 text-center text-sm text-slate-400">
+              <li className="px-4 py-8 text-center text-sm text-gray-500">
                 Nada por aqui — quando uma automação notificar você, aparece nesta lista.
               </li>
             ) : (
               items.map((n) => (
-                <li key={n.id} className={n.readAt ? "bg-white" : "bg-indigo-50/60"}>
+                <li key={n.id} className={n.readAt ? "bg-[#141413]" : "bg-cyan-400/10"}>
                   <Link
                     href={n.card ? `/board/${n.card.boardKey}/card/${n.card.id}` : "#"}
                     onClick={async () => {
                       setOpen(false);
                       if (!n.readAt) await markNotificationReadAction({ id: n.id });
                     }}
-                    className="block px-4 py-3 hover:bg-slate-50"
+                    className="block px-4 py-3 hover:bg-[#141413]/5"
                   >
-                    <p className="text-sm text-slate-800">{n.message}</p>
-                    <p className="mt-0.5 text-xs text-slate-400">
+                    <p className="text-sm text-gray-100">{n.message}</p>
+                    <p className="mt-0.5 text-xs text-gray-500">
                       {n.card ? `${n.card.title} · ` : ""}
                       {relativeTime(n.createdAt)}
                     </p>

@@ -76,7 +76,7 @@ export default async function CardPage({ params }: { params: { key: string; id: 
   }));
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 p-4 md:p-8">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 p-4 md:p-8">
       <Link
         href={`/board/${params.key}`}
         aria-label="Voltar ao quadro"

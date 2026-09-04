@@ -127,10 +127,10 @@ export function CardDetail({
   const isOpp = card.type === "opportunity";
 
   return (
-    <div className="mx-auto w-full max-w-3xl rounded-2xl bg-white shadow-2xl">
-      <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6 pb-4">
+    <div className="mx-auto w-full max-w-3xl rounded-2xl border border-white/10 bg-[#0f1016] shadow-2xl">
+      <div className="flex items-start justify-between gap-4 border-b border-white/5 p-6 pb-4">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+          <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400">
             {isOpp ? "Oportunidade" : "Projeto"} · {card.listName}
           </p>
           <input
@@ -139,13 +139,13 @@ export function CardDetail({
             onBlur={(e) => {
               if (e.target.value !== card.title) void save({ title: e.target.value });
             }}
-            className="mt-1 w-full rounded-md border border-transparent px-1 py-0.5 text-xl font-bold hover:border-slate-200 focus:border-indigo-500 focus:outline-none"
+            className="mt-1 w-full rounded-md border border-transparent px-1 py-0.5 text-xl font-bold hover:border-white/10 focus:border-cyan-400 focus:outline-none"
           />
         </div>
         <Link
           href={`/board/${card.boardKey}`}
           aria-label="Fechar"
-          className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          className="rounded-lg p-2 text-gray-500 hover:bg-white/10 hover:text-gray-300"
         >
           ✕
         </Link>
@@ -157,7 +157,7 @@ export function CardDetail({
           {card.source ? (
             <Link
               href={`/board/${card.source.boardKey}/card/${card.source.id}`}
-              className="block rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800 hover:bg-indigo-100"
+              className="block rounded-xl border border-cyan-400/25 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-200 hover:bg-cyan-400/15"
             >
               ⚡ Origem: venda <strong>{card.source.title}</strong> — clique para abrir a negociação
             </Link>
@@ -165,17 +165,17 @@ export function CardDetail({
           {card.spawned ? (
             <Link
               href={`/board/${card.spawned.boardKey}/card/${card.spawned.id}`}
-              className="block rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 hover:bg-emerald-100"
+              className="block rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-300 hover:bg-emerald-400/20"
             >
               🚀 Projeto gerado: <strong>{card.spawned.title}</strong> — acompanhar a execução
             </Link>
           ) : null}
 
           {/* Dados do cliente (US-12/US-17) */}
-          <section className="rounded-xl border border-slate-200 p-4">
-            <h3 className="text-sm font-semibold text-slate-700">Cliente</h3>
+          <section className="rounded-xl border border-white/10 p-4">
+            <h3 className="text-sm font-semibold text-gray-200">Cliente</h3>
             <div className="mt-2 grid gap-3 sm:grid-cols-2">
-              <label className="text-xs font-medium text-slate-500">
+              <label className="text-xs font-medium text-gray-400">
                 Nome
                 <input
                   defaultValue={card.clientName ?? ""}
@@ -183,10 +183,10 @@ export function CardDetail({
                     if (e.target.value !== (card.clientName ?? ""))
                       void save({ clientName: e.target.value || null });
                   }}
-                  className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-white/15 px-2 py-1.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                 />
               </label>
-              <label className="text-xs font-medium text-slate-500">
+              <label className="text-xs font-medium text-gray-400">
                 E-mail
                 <input
                   defaultValue={card.clientEmail ?? ""}
@@ -194,10 +194,10 @@ export function CardDetail({
                     if (e.target.value !== (card.clientEmail ?? ""))
                       void save({ clientEmail: e.target.value || null });
                   }}
-                  className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-white/15 px-2 py-1.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                 />
               </label>
-              <label className="text-xs font-medium text-slate-500">
+              <label className="text-xs font-medium text-gray-400">
                 Telefone
                 <input
                   defaultValue={card.clientPhone ?? ""}
@@ -205,10 +205,10 @@ export function CardDetail({
                     if (e.target.value !== (card.clientPhone ?? ""))
                       void save({ clientPhone: e.target.value || null });
                   }}
-                  className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-white/15 px-2 py-1.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                 />
               </label>
-              <label className="text-xs font-medium text-slate-500">
+              <label className="text-xs font-medium text-gray-400">
                 Valor {isOpp ? "estimado" : "do contrato"} (R$)
                 <input
                   defaultValue={card.amount ? Number(card.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : ""}
@@ -216,14 +216,14 @@ export function CardDetail({
                   onBlur={(e) => {
                     void save({ amount: e.target.value || null });
                   }}
-                  className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-white/15 px-2 py-1.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                 />
               </label>
             </div>
           </section>
 
           <section>
-            <h3 className="text-sm font-semibold text-slate-700">Descrição</h3>
+            <h3 className="text-sm font-semibold text-gray-200">Descrição</h3>
             <textarea
               defaultValue={card.description ?? ""}
               rows={3}
@@ -232,12 +232,12 @@ export function CardDetail({
                 if (e.target.value !== (card.description ?? ""))
                   void save({ description: e.target.value || null });
               }}
-              className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              className="mt-2 w-full rounded-xl border border-white/10 px-3 py-2 text-sm focus:border-cyan-400 focus:outline-none"
             />
           </section>
 
           {card.lossReason ? (
-            <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
+            <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300">
               <strong>Motivo da perda:</strong> {card.lossReason}
             </p>
           ) : null}
@@ -245,17 +245,17 @@ export function CardDetail({
           {/* Checklist de tarefas (US-18/US-19) */}
           <section>
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-700">
+              <h3 className="text-sm font-semibold text-gray-200">
                 Checklist{" "}
                 {tasks.length > 0 ? (
-                  <span className="font-normal text-slate-400">
+                  <span className="font-normal text-gray-500">
                     {doneCount}/{tasks.length}
                   </span>
                 ) : null}
               </h3>
             </div>
             {tasks.length > 0 ? (
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
                 <div
                   className="h-full rounded-full bg-emerald-500 transition-all"
                   style={{ width: `${progress}%` }}
@@ -266,7 +266,7 @@ export function CardDetail({
               {tasks.map((task, i) => {
                 const status = dueStatus(task.dueDate, task.done);
                 return (
-                  <li key={task.id} className="group flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2">
+                  <li key={task.id} className="group flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2">
                     <input
                       type="checkbox"
                       checked={task.done}
@@ -287,8 +287,8 @@ export function CardDetail({
                         }
                       }}
                       className={clsx(
-                        "min-w-0 flex-1 rounded border border-transparent px-1 text-sm focus:border-indigo-400 focus:outline-none",
-                        task.done && "text-slate-400 line-through"
+                        "min-w-0 flex-1 rounded border border-transparent px-1 text-sm focus:border-cyan-400 focus:outline-none",
+                        task.done && "text-gray-500 line-through"
                       )}
                     />
                     <input
@@ -302,9 +302,9 @@ export function CardDetail({
                         startTransition(() => router.refresh());
                       }}
                       className={clsx(
-                        "rounded border border-slate-200 px-1 py-0.5 text-xs",
-                        status === "late" && "border-red-300 text-red-600",
-                        status === "soon" && "border-amber-300 text-amber-700"
+                        "rounded border border-white/10 px-1 py-0.5 text-xs",
+                        status === "late" && "border-red-400/40 text-red-400",
+                        status === "soon" && "border-amber-400/40 text-amber-300"
                       )}
                     />
                     <select
@@ -317,7 +317,7 @@ export function CardDetail({
                         });
                         if (!r.ok) toast(r.error, "error");
                       }}
-                      className="w-24 truncate rounded border border-slate-200 px-1 py-0.5 text-xs"
+                      className="w-24 truncate rounded border border-white/10 px-1 py-0.5 text-xs"
                     >
                       <option value="">Ninguém</option>
                       {users.map((u) => (
@@ -327,8 +327,8 @@ export function CardDetail({
                       ))}
                     </select>
                     <span className="flex opacity-0 transition group-hover:opacity-100">
-                      <button type="button" aria-label="Subir" onClick={() => void moveTask(i, -1)} className="px-1 text-slate-400 hover:text-slate-700">↑</button>
-                      <button type="button" aria-label="Descer" onClick={() => void moveTask(i, 1)} className="px-1 text-slate-400 hover:text-slate-700">↓</button>
+                      <button type="button" aria-label="Subir" onClick={() => void moveTask(i, -1)} className="px-1 text-gray-500 hover:text-gray-200">↑</button>
+                      <button type="button" aria-label="Descer" onClick={() => void moveTask(i, 1)} className="px-1 text-gray-500 hover:text-gray-200">↓</button>
                       <button
                         type="button"
                         aria-label="Remover tarefa"
@@ -337,7 +337,7 @@ export function CardDetail({
                           if (!r.ok) toast(r.error, "error");
                           startTransition(() => router.refresh());
                         }}
-                        className="px-1 text-slate-400 hover:text-red-600"
+                        className="px-1 text-gray-500 hover:text-red-400"
                       >
                         ✕
                       </button>
@@ -347,18 +347,18 @@ export function CardDetail({
               })}
             </ul>
 
-            <div className="mt-3 flex flex-wrap items-end gap-2 rounded-xl bg-slate-50 p-3">
-              <label className="min-w-40 flex-1 text-xs font-medium text-slate-500">
+            <div className="mt-3 flex flex-wrap items-end gap-2 rounded-xl bg-[#141413]/5 p-3">
+              <label className="min-w-40 flex-1 text-xs font-medium text-gray-400">
                 Nova tarefa
                 <input
                   value={newTask.title}
                   onChange={(e) => setNewTask((t) => ({ ...t, title: e.target.value }))}
                   onKeyDown={(e) => e.key === "Enter" && void addTask()}
                   placeholder="O que precisa ser feito?"
-                  className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-white/15 px-2 py-1.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                 />
               </label>
-              <label className="text-xs font-medium text-slate-500">
+              <label className="text-xs font-medium text-gray-400">
                 Prazo (obrigatório)
                 <input
                   ref={taskDueRef}
@@ -366,19 +366,19 @@ export function CardDetail({
                   value={newTask.dueDate}
                   onChange={(e) => setNewTask((t) => ({ ...t, dueDate: e.target.value }))}
                   className={clsx(
-                    "mt-1 w-full rounded-md border px-2 py-1.5 text-sm text-slate-900 focus:outline-none",
+                    "mt-1 w-full rounded-md border px-2 py-1.5 text-sm text-white focus:outline-none",
                     highlightDue
-                      ? "border-red-500 ring-2 ring-red-200"
-                      : "border-slate-300 focus:border-indigo-500"
+                      ? "border-red-400 ring-2 ring-red-500/30"
+                      : "border-white/15 focus:border-cyan-400"
                   )}
                 />
               </label>
-              <label className="text-xs font-medium text-slate-500">
+              <label className="text-xs font-medium text-gray-400">
                 Responsável
                 <select
                   value={newTask.assigneeId}
                   onChange={(e) => setNewTask((t) => ({ ...t, assigneeId: e.target.value }))}
-                  className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900"
+                  className="mt-1 w-full rounded-md border border-white/15 px-2 py-1.5 text-sm text-white"
                 >
                   <option value="">Ninguém</option>
                   {users.map((u) => (
@@ -391,7 +391,7 @@ export function CardDetail({
               <button
                 type="button"
                 onClick={() => void addTask()}
-                className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+                className="rounded-full bg-cyan-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-cyan-400"
               >
                 Adicionar
               </button>
@@ -400,24 +400,24 @@ export function CardDetail({
 
           {/* Histórico (US-10) */}
           <section>
-            <h3 className="text-sm font-semibold text-slate-700">Histórico</h3>
+            <h3 className="text-sm font-semibold text-gray-200">Histórico</h3>
             <ul className="mt-2 space-y-2">
               {activities.length === 0 ? (
-                <li className="text-sm text-slate-400">Nenhuma atividade registrada ainda.</li>
+                <li className="text-sm text-gray-500">Nenhuma atividade registrada ainda.</li>
               ) : (
                 activities.map((a) => (
                   <li key={a.id} className="flex gap-2 text-sm">
-                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-slate-300" />
+                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-white/20" />
                     <div>
-                      <p className="text-slate-700">
+                      <p className="text-gray-200">
                         <strong>
                           {a.automationName ? `Automação: ${a.automationName}` : (a.actorName ?? "Sistema")}
                         </strong>{" "}
                         {ACTION_LABEL[a.action] ?? a.action}
-                        <span className="ml-2 text-xs text-slate-400">{relativeTime(a.createdAt)}</span>
+                        <span className="ml-2 text-xs text-gray-500">{relativeTime(a.createdAt)}</span>
                       </p>
                       {a.detail && a.action !== "card.updated" ? (
-                        <p className="break-all text-xs text-slate-400">{a.detail}</p>
+                        <p className="break-all text-xs text-gray-500">{a.detail}</p>
                       ) : null}
                     </div>
                   </li>
@@ -429,12 +429,12 @@ export function CardDetail({
 
         {/* Coluna lateral */}
         <aside className="space-y-4">
-          <label className="block text-xs font-medium text-slate-500">
+          <label className="block text-xs font-medium text-gray-400">
             Responsável
             <select
               defaultValue={card.assigneeId ?? ""}
               onChange={(e) => void save({ assigneeId: e.target.value || null })}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-slate-900"
+              className="mt-1 w-full rounded-lg border border-white/15 px-2 py-2 text-sm text-white"
             >
               <option value="">Sem responsável</option>
               {users.map((u) => (
@@ -444,23 +444,23 @@ export function CardDetail({
               ))}
             </select>
           </label>
-          <label className="block text-xs font-medium text-slate-500">
+          <label className="block text-xs font-medium text-gray-400">
             Prazo
             <input
               type="date"
               defaultValue={card.dueDate ?? ""}
               lang="pt-BR"
               onChange={(e) => void save({ dueDate: e.target.value || null })}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-slate-900"
+              className="mt-1 w-full rounded-lg border border-white/15 px-2 py-2 text-sm text-white"
             />
           </label>
           {card.dueDate ? (
             <p
               className={clsx(
                 "rounded-lg px-3 py-2 text-xs font-medium",
-                dueStatus(card.dueDate) === "late" && "bg-red-100 text-red-700",
-                dueStatus(card.dueDate) === "soon" && "bg-amber-100 text-amber-700",
-                dueStatus(card.dueDate) === "ok" && "bg-slate-100 text-slate-600"
+                dueStatus(card.dueDate) === "late" && "bg-red-500/15 text-red-300",
+                dueStatus(card.dueDate) === "soon" && "bg-amber-400/15 text-amber-300",
+                dueStatus(card.dueDate) === "ok" && "bg-white/10 text-gray-300"
               )}
             >
               {dueStatus(card.dueDate) === "late"
@@ -469,7 +469,7 @@ export function CardDetail({
             </p>
           ) : null}
           {card.amount ? (
-            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+            <p className="rounded-lg bg-emerald-400/10 px-3 py-2 text-sm font-semibold text-emerald-300">
               {brl(card.amount)}
             </p>
           ) : null}

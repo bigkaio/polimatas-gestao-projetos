@@ -30,7 +30,7 @@ export function CardItem({
       {...attributes}
       {...listeners}
       className={clsx(
-        "rounded-xl border border-slate-200 bg-white p-3 shadow-sm",
+        "rounded-xl border border-white/10 bg-[#141413] p-3 shadow-sm",
         !disabled && "cursor-grab active:cursor-grabbing",
         isDragging && "opacity-40"
       )}
@@ -41,13 +41,13 @@ export function CardItem({
         onPointerDown={(e) => e.stopPropagation()}
         className="block"
       >
-        <p className="text-sm font-medium leading-snug text-slate-900 hover:text-indigo-700">
+        <p className="text-sm font-medium leading-snug text-white hover:text-cyan-400">
           {card.title}
         </p>
       </Link>
 
       {card.clientName ? (
-        <p className="mt-1 text-xs text-slate-500">{card.clientName}</p>
+        <p className="mt-1 text-xs text-gray-400">{card.clientName}</p>
       ) : null}
 
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
@@ -55,16 +55,16 @@ export function CardItem({
           <span
             className={clsx(
               "rounded-md px-1.5 py-0.5 font-medium",
-              due === "late" && "bg-red-100 text-red-700",
-              due === "soon" && "bg-amber-100 text-amber-700",
-              due === "ok" && "bg-slate-100 text-slate-600"
+              due === "late" && "bg-red-500/15 text-red-300",
+              due === "soon" && "bg-amber-400/15 text-amber-300",
+              due === "ok" && "bg-white/10 text-gray-300"
             )}
           >
             {dateBR(card.dueDate)}
           </span>
         ) : null}
         {card.amount ? (
-          <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 font-medium text-emerald-700">
+          <span className="rounded-md bg-emerald-400/10 px-1.5 py-0.5 font-medium text-emerald-300">
             {brl(card.amount)}
           </span>
         ) : null}
@@ -73,22 +73,22 @@ export function CardItem({
             className={clsx(
               "rounded-md px-1.5 py-0.5 font-medium",
               card.tasksDone === card.tasksTotal
-                ? "bg-emerald-50 text-emerald-700"
-                : "bg-slate-100 text-slate-600"
+                ? "bg-emerald-400/10 text-emerald-300"
+                : "bg-white/10 text-gray-300"
             )}
           >
             ☑ {card.tasksDone}/{card.tasksTotal}
           </span>
         ) : null}
         {card.sourceCardId ? (
-          <span title="Gerado automaticamente a partir de uma venda" className="text-indigo-500">
+          <span title="Gerado automaticamente a partir de uma venda" className="text-cyan-400">
             ⚡ venda
           </span>
         ) : null}
         {card.assignee ? (
           <span
             title={card.assignee.name}
-            className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-bold text-indigo-700"
+            className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-cyan-400/15 text-[10px] font-bold text-cyan-400"
           >
             {initials(card.assignee.name)}
           </span>

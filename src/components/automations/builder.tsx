@@ -64,7 +64,7 @@ function defaultAction(type: AutomationAction["type"], lists: ListRef[]): Automa
 }
 
 const inputCls =
-  "rounded-lg border border-slate-300 px-2 py-1.5 text-sm focus:border-indigo-500 focus:outline-none";
+  "rounded-lg border border-white/15 px-2 py-1.5 text-sm focus:border-cyan-400 focus:outline-none";
 
 /** Construtor de regras sem código, em 3 passos (US-25). */
 export function AutomationBuilder({
@@ -114,10 +114,10 @@ export function AutomationBuilder({
       return next;
     });
 
-  const stepCls = "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm";
+  const stepCls = "rounded-2xl border border-white/10 bg-[#141413] p-5 shadow-sm";
   const stepTitle = (n: number, label: string) => (
     <h2 className="flex items-center gap-2 text-base font-bold">
-      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-sm text-white">
+      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-cyan-500 text-sm text-white">
         {n}
       </span>
       {label}
@@ -127,19 +127,19 @@ export function AutomationBuilder({
   return (
     <div className="mx-auto max-w-3xl space-y-4 px-4 py-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{initial ? "Editar automação" : "Nova automação"}</h1>
-        <button type="button" onClick={onCancel} className="text-sm text-slate-500 hover:underline">
+        <h1 className="text-3xl font-light tracking-tight text-white">{initial ? "Editar automação" : "Nova automação"}</h1>
+        <button type="button" onClick={onCancel} className="text-sm text-gray-400 hover:underline">
           ← Voltar para a lista
         </button>
       </div>
 
-      <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900">
-        <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Pré-visualização</p>
+      <div className="rounded-2xl border border-cyan-400/25 bg-cyan-400/10 p-4 text-sm text-cyan-100">
+        <p className="text-xs font-semibold uppercase tracking-wide text-cyan-400">Pré-visualização</p>
         <p className="mt-1">{preview}</p>
       </div>
 
       <label className="block">
-        <span className="text-sm font-medium text-slate-700">Nome da regra</span>
+        <span className="text-sm font-medium text-gray-200">Nome da regra</span>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -152,7 +152,7 @@ export function AutomationBuilder({
       <section className={stepCls}>
         {stepTitle(1, "Quando… (gatilho)")}
         {isSystem ? (
-          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <p className="mt-2 rounded-lg bg-amber-400/10 px-3 py-2 text-xs text-amber-300">
             Regra nativa: o gatilho é fixo (venda fechada). Destino, condições e campos herdados
             continuam editáveis.
           </p>
@@ -322,7 +322,7 @@ export function AutomationBuilder({
                 type="button"
                 aria-label="Remover condição"
                 onClick={() => setRules((prev) => prev.filter((_, j) => j !== i))}
-                className="text-slate-400 hover:text-red-600"
+                className="text-gray-500 hover:text-red-400"
               >
                 ✕
               </button>
@@ -332,7 +332,7 @@ export function AutomationBuilder({
         <button
           type="button"
           onClick={() => setRules((prev) => [...prev, { field: "card.type", operator: "is", value: "" }])}
-          className="mt-3 text-sm font-medium text-indigo-600 hover:underline"
+          className="mt-3 text-sm font-medium text-cyan-400 hover:underline"
         >
           + Adicionar condição
         </button>
@@ -343,7 +343,7 @@ export function AutomationBuilder({
         {stepTitle(3, "Então… (ações, na ordem)")}
         <ul className="mt-3 space-y-3">
           {actions.map((action, i) => (
-            <li key={i} className="rounded-xl border border-slate-200 p-3">
+            <li key={i} className="rounded-xl border border-white/10 p-3">
               <div className="flex items-center gap-2">
                 <select
                   value={action.type}
@@ -363,13 +363,13 @@ export function AutomationBuilder({
                   ))}
                 </select>
                 <span className="ml-auto flex gap-1">
-                  <button type="button" aria-label="Subir ação" onClick={() => moveAction(i, -1)} className="px-1 text-slate-400 hover:text-slate-700">↑</button>
-                  <button type="button" aria-label="Descer ação" onClick={() => moveAction(i, 1)} className="px-1 text-slate-400 hover:text-slate-700">↓</button>
+                  <button type="button" aria-label="Subir ação" onClick={() => moveAction(i, -1)} className="px-1 text-gray-500 hover:text-gray-200">↑</button>
+                  <button type="button" aria-label="Descer ação" onClick={() => moveAction(i, 1)} className="px-1 text-gray-500 hover:text-gray-200">↓</button>
                   <button
                     type="button"
                     aria-label="Remover ação"
                     onClick={() => setActions((prev) => prev.filter((_, j) => j !== i))}
-                    className="px-1 text-slate-400 hover:text-red-600"
+                    className="px-1 text-gray-500 hover:text-red-400"
                   >
                     ✕
                   </button>
@@ -519,8 +519,8 @@ export function AutomationBuilder({
                         className={clsx(inputCls, "min-w-56 flex-1")}
                       />
                     </div>
-                    <fieldset className="flex flex-wrap gap-3 text-xs text-slate-600">
-                      <legend className="text-xs font-medium text-slate-500">Campos herdados da venda:</legend>
+                    <fieldset className="flex flex-wrap gap-3 text-xs text-gray-300">
+                      <legend className="text-xs font-medium text-gray-400">Campos herdados da venda:</legend>
                       {(
                         [
                           ["client_name", "nome do cliente"],
@@ -577,7 +577,7 @@ export function AutomationBuilder({
         <button
           type="button"
           onClick={() => setActions((prev) => [...prev, defaultAction("notify_user", lists)])}
-          className="mt-3 text-sm font-medium text-indigo-600 hover:underline"
+          className="mt-3 text-sm font-medium text-cyan-400 hover:underline"
         >
           + Adicionar ação
         </button>
@@ -587,7 +587,7 @@ export function AutomationBuilder({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100"
+          className="rounded-full px-4 py-2 text-sm text-gray-300 hover:bg-[#141413]/10"
         >
           Cancelar
         </button>
@@ -605,7 +605,7 @@ export function AutomationBuilder({
             });
             setSaving(false);
           }}
-          className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="rounded-full bg-cyan-500 px-5 py-2 text-sm font-medium text-white hover:bg-cyan-400 disabled:opacity-50"
         >
           {saving ? "Salvando…" : "Salvar automação"}
         </button>
