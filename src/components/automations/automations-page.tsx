@@ -29,6 +29,11 @@ export type AutomationDTO = {
 type CardRef = { id: string; title: string; type: string };
 type UserRef = { id: string; name: string };
 
+/** Largura fixa: as ações ficam alinhadas entre um card e outro. A cor fica
+ *  por conta de cada botão — misturar as duas aqui gera conflito no clsx. */
+const actionCls = "w-20 shrink-0 rounded-lg py-1 text-center text-sm transition";
+const neutralAction = `${actionCls} text-gray-400 hover:bg-white/10`;
+
 export function AutomationsPage({
   automations,
   lists,
@@ -142,7 +147,7 @@ export function AutomationsPage({
                 <p className="mt-1 text-xs text-gray-500">{a.runCount} execução(ões)</p>
               </div>
               {canManage ? (
-                <div className="flex items-center gap-1">
+                <div className="flex shrink-0 items-center gap-1">
                   <button
                     type="button"
                     role="switch"
@@ -172,14 +177,14 @@ export function AutomationsPage({
                       setTestCard("");
                       setTestResult(null);
                     }}
-                    className="rounded-lg px-2 py-1 text-sm text-gray-400 hover:bg-white/10"
+                    className={neutralAction}
                   >
                     Testar
                   </button>
                   <button
                     type="button"
                     onClick={() => openEdit(a)}
-                    className="rounded-lg px-2 py-1 text-sm text-gray-400 hover:bg-white/10"
+                    className={neutralAction}
                   >
                     Editar
                   </button>
@@ -190,23 +195,32 @@ export function AutomationsPage({
                       if (!r.ok) toast(r.error, "error");
                       refresh();
                     }}
-                    className="rounded-lg px-2 py-1 text-sm text-gray-400 hover:bg-white/10"
+                    className={neutralAction}
                   >
                     Duplicar
                   </button>
-                  {!a.isSystem ? (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const r = await deleteAutomationAction({ id: a.id });
-                        if (!r.ok) toast(r.error, "error");
-                        refresh();
-                      }}
-                      className="rounded-lg px-2 py-1 text-sm text-red-400 hover:bg-red-500/10"
-                    >
-                      Excluir
-                    </button>
-                  ) : null}
+                  <button
+                    type="button"
+                    disabled={a.isSystem}
+                    title={
+                      a.isSystem
+                        ? "Automação nativa do briefing — o servidor recusa a exclusão."
+                        : undefined
+                    }
+                    onClick={async () => {
+                      const r = await deleteAutomationAction({ id: a.id });
+                      if (!r.ok) toast(r.error, "error");
+                      refresh();
+                    }}
+                    className={clsx(
+                      actionCls,
+                      a.isSystem
+                        ? "cursor-not-allowed text-gray-600"
+                        : "text-red-400 hover:bg-red-500/10"
+                    )}
+                  >
+                    Excluir
+                  </button>
                 </div>
               ) : null}
             </div>
