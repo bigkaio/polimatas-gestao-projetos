@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
-import { canManageAutomations } from "@/core/permissions";
+import { canManageAutomations } from "@/core/permission-store";
 import type { ListRef } from "@/lib/humanize";
 import { AutomationsPage } from "@/components/automations/automations-page";
 
@@ -45,7 +45,7 @@ export default async function Page() {
       lists={listRefs}
       users={users}
       cards={cards}
-      canManage={canManageAutomations(session.role)}
+      canManage={await canManageAutomations(session.role)}
     />
   );
 }

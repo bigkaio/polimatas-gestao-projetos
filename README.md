@@ -146,7 +146,7 @@ As decisões de arquitetura estão registradas no [backlog](https://bigkaio.gith
 
 ## Status do projeto
 
-✅ Funcional — dois quadros com drag and drop, integração automática venda → projeto, motor de automações configurável pela interface (gatilho → condições → ações), motor de compliance bloqueante em três camadas (UI, servidor e trigger no Postgres), gatilhos temporais via cron, notificações, histórico auditável e seed de demonstração. Motores e fluxo central cobertos por 12 testes automatizados (`npm test`).
+✅ Funcional — dois quadros com drag and drop, matriz de permissões editável pelo admin (Configurações → Permissões por papel, aplicada no servidor e auditada), integração automática venda → projeto, motor de automações configurável pela interface (gatilho → condições → ações), motor de compliance bloqueante em três camadas (UI, servidor e trigger no Postgres), gatilhos temporais via cron, notificações, histórico auditável e seed de demonstração. Motores, permissões e fluxo central cobertos por 19 testes automatizados (`npm test`).
 
 ## Critérios de avaliação
 

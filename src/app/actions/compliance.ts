@@ -4,13 +4,13 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
-import { canManageCompliance } from "@/core/permissions";
+import { canManageCompliance } from "@/core/permission-store";
 import { complianceRuleSchema } from "@/core/rules";
 import { toResult, type ActionResult } from "./result";
 
 async function requireAdmin() {
   const session = await requireSession();
-  return canManageCompliance(session.role) ? session : null;
+  return (await canManageCompliance(session.role)) ? session : null;
 }
 
 export async function saveComplianceRuleAction(input: unknown): Promise<ActionResult<{ id: string }>> {

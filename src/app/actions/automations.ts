@@ -4,14 +4,14 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
-import { canManageAutomations } from "@/core/permissions";
+import { canManageAutomations } from "@/core/permission-store";
 import { automationSchema } from "@/core/rules";
 import { runAutomation, type ActionOutcome } from "@/core/engine";
 import { toResult, type ActionResult } from "./result";
 
 async function requireManager() {
   const session = await requireSession();
-  if (!canManageAutomations(session.role)) {
+  if (!(await canManageAutomations(session.role))) {
     return null;
   }
   return session;

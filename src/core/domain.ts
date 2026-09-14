@@ -6,7 +6,12 @@ import { cardContext } from "./context";
 import { dispatch } from "./engine";
 import { NotFoundError, PermissionError } from "./errors";
 import type { Actor, AutomationContext } from "./events";
-import { canEditCard, canMutateBoard } from "./permissions";
+import {
+  canCompleteTask,
+  canEditCard,
+  canManageTasks,
+  canMutateBoard,
+} from "./permission-store";
 
 /**
  * CAMADA DE DOMÍNIO — única porta de escrita (seção 5.1 do backlog).
@@ -82,7 +87,7 @@ export async function createCard(
     include: { board: true },
   });
   if (!list || list.boardId !== data.boardId) throw new NotFoundError("Lista não encontrada.");
-  if (actor && !canMutateBoard(actor.role, list.board.type)) {
+  if (actor && !(await canMutateBoard(actor.role, list.board.type))) {
     throw new PermissionError(
       list.board.type === "opportunity"
         ? "Apenas vendas, gestores e admins criam oportunidades."
@@ -181,7 +186,7 @@ export async function updateCard(
   auto?: AutomationContext
 ): Promise<Card> {
   const card = await requireCard(cardId);
-  if (actor && !canEditCard(actor.role, card.board.key === "sales" ? "opportunity" : "project", card, actor.id)) {
+  if (actor && !(await canEditCard(actor.role, card.board.key === "sales" ? "opportunity" : "project", card, actor.id))) {
     throw new PermissionError("Você só edita cards em que é responsável.");
   }
 
@@ -257,7 +262,7 @@ export async function moveCard(
   if (!toList || toList.boardId !== card.boardId)
     throw new NotFoundError("Lista de destino não encontrada.");
 
-  if (actor && !canMutateBoard(actor.role, toList.board.type)) {
+  if (actor && !(await canMutateBoard(actor.role, toList.board.type))) {
     throw new PermissionError(
       toList.board.type === "opportunity"
         ? "Apenas vendas, gestores e admins movem oportunidades."
@@ -334,7 +339,7 @@ export async function createTask(
   auto?: AutomationContext
 ) {
   const card = await requireCard(cardId);
-  if (actor && !canEditCard(actor.role, card.board.key === "sales" ? "opportunity" : "project", card, actor.id)) {
+  if (actor && !(await canManageTasks(actor.role, card.board.key === "sales" ? "opportunity" : "project", card, actor.id))) {
     throw new PermissionError("Você só adiciona tarefas em cards que pode editar.");
   }
 
@@ -389,6 +394,9 @@ export async function updateTask(
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) throw new NotFoundError("Tarefa não encontrada.");
   const card = await requireCard(task.cardId);
+  if (actor && !(await canManageTasks(actor.role, card.board.key === "sales" ? "opportunity" : "project", card, actor.id))) {
+    throw new PermissionError("Você só edita tarefas de cards que pode editar.");
+  }
 
   await assertCompliance(
     "task.update",
@@ -412,6 +420,9 @@ export async function toggleTask(taskId: string, done: boolean, actor: Actor | n
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) throw new NotFoundError("Tarefa não encontrada.");
   const card = await requireCard(task.cardId);
+  if (actor && !(await canCompleteTask(actor.role))) {
+    throw new PermissionError("Seu papel não pode concluir tarefas do checklist.");
+  }
 
   const updated = await prisma.task.update({
     where: { id: taskId },
@@ -440,7 +451,7 @@ export async function deleteTask(taskId: string, actor: Actor | null) {
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) throw new NotFoundError("Tarefa não encontrada.");
   const card = await requireCard(task.cardId);
-  if (actor && !canEditCard(actor.role, card.board.key === "sales" ? "opportunity" : "project", card, actor.id)) {
+  if (actor && !(await canManageTasks(actor.role, card.board.key === "sales" ? "opportunity" : "project", card, actor.id))) {
     throw new PermissionError("Você só remove tarefas de cards que pode editar.");
   }
   await prisma.task.delete({ where: { id: taskId } });

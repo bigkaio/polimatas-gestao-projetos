@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { requireSession } from "@/lib/auth";
+import { canManageUsers } from "@/core/permission-store";
 import { logoutAction } from "@/app/actions/auth";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { NavLinks } from "@/components/nav-links";
+import { SettingsLink } from "@/components/settings-link";
 import { ToastProvider } from "@/components/toast";
 import { initials } from "@/lib/format";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
+  const manageUsers = await canManageUsers(session.role);
 
   return (
     <ToastProvider>
@@ -25,6 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <NavLinks />
             </nav>
             <div className="ml-auto flex items-center gap-2">
+              {manageUsers && <SettingsLink />}
               <NotificationsBell />
               <div
                 title={`${session.name} (${session.role})`}

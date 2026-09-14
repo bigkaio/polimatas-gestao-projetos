@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
-import { canManageCompliance } from "@/core/permissions";
+import { canManageCompliance } from "@/core/permission-store";
 import type { ListRef } from "@/lib/humanize";
 import { CompliancePage } from "@/components/compliance/compliance-page";
 
@@ -55,7 +55,7 @@ export default async function Page() {
       }))}
       lists={listRefs}
       users={users}
-      canManage={canManageCompliance(session.role)}
+      canManage={await canManageCompliance(session.role)}
     />
   );
 }

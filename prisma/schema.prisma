@@ -59,6 +59,7 @@ model Profile {
   notifications Notification[]
   activities    ActivityLog[]
   violations    ComplianceViolation[]
+  permissionAudits PermissionAudit[]
 
   @@map("profiles")
 }
@@ -244,4 +245,35 @@ model ActivityLog {
 
   @@index([cardId, createdAt])
   @@map("activity_log")
+}
+
+/// Matriz de permissões editável pelo admin (seção 3.1 do backlog).
+/// Guarda apenas o que difere do padrão de código — linha ausente = padrão.
+/// O papel `admin` nunca é gravado aqui: mantém todas as capacidades sempre.
+model RolePermission {
+  id          String   @id @default(uuid())
+  role        Role
+  capability  String
+  allowed     Boolean
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  updatedById String?  @map("updated_by")
+
+  @@unique([role, capability])
+  @@map("role_permissions")
+}
+
+/// Trilha de auditoria das mudanças de permissão e de papel de usuário.
+model PermissionAudit {
+  id        String   @id @default(uuid())
+  actorId   String?  @map("actor_id")
+  kind      String
+  target    String
+  before    String?
+  after     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  actor Profile? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@map("permission_audit")
 }

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
-import { canMutateBoard } from "@/core/permissions";
+import { canMutateBoard } from "@/core/permission-store";
 import type { BoardDTO, CardDTO, FunnelStats, UserDTO } from "@/lib/dto";
 import { BoardView } from "@/components/board/board-view";
 
@@ -98,7 +98,7 @@ export default async function BoardPage({ params }: { params: { key: string } })
       initialCards={cardDTOs}
       users={users}
       funnel={funnel}
-      canMutate={canMutateBoard(session.role, board.type)}
+      canMutate={await canMutateBoard(session.role, board.type)}
       currentUserId={session.userId}
     />
   );
