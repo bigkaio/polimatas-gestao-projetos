@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { login, logout, signup } from "@/lib/auth";
+import { changePassword, getSession, login, logout, signup } from "@/lib/auth";
 
 const loginSchema = z.object({
   email: z.string().email("Informe um e-mail válido."),
@@ -22,7 +22,7 @@ export async function loginAction(
 
   const session = await login(parsed.data.email, parsed.data.password);
   if (!session) return { error: "E-mail ou senha incorretos." };
-  redirect("/inicio");
+  redirect(session.mustChangePassword ? "/definir-senha" : "/inicio");
 }
 
 const signupSchema = z.object({
@@ -45,6 +45,30 @@ export async function signupAction(
 
   const result = await signup(parsed.data.name, parsed.data.email, parsed.data.password);
   if ("error" in result) return { error: result.error };
+  redirect("/inicio");
+}
+
+const setPasswordSchema = z
+  .object({
+    password: z.string().min(6, "A senha precisa ter pelo menos 6 caracteres."),
+    confirm: z.string(),
+  })
+  .refine((d) => d.password === d.confirm, { message: "As senhas não conferem." });
+
+export async function setPasswordAction(
+  _prev: { error: string } | null,
+  formData: FormData
+): Promise<{ error: string } | null> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  const parsed = setPasswordSchema.safeParse({
+    password: formData.get("password"),
+    confirm: formData.get("confirm"),
+  });
+  if (!parsed.success)
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+
+  await changePassword(session.userId, parsed.data.password);
   redirect("/inicio");
 }
 

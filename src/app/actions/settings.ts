@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireSession, type Session } from "@/lib/auth";
+import { createMemberAccount, requireSession, type Session } from "@/lib/auth";
 import {
   CAPABILITY_KEYS,
   EDITABLE_ROLES,
@@ -38,7 +38,7 @@ const DENIED = {
 
 async function audit(
   actorId: string,
-  kind: "permission" | "role",
+  kind: "permission" | "role" | "user",
   target: string,
   before: string | null,
   after: string | null
@@ -179,6 +179,47 @@ export async function changeUserRoleAction(input: unknown): Promise<ActionResult
     invalidatePermissionCache();
     revalidateAll();
     return { ok: true };
+  } catch (err) {
+    return toResult(err);
+  }
+}
+
+// ------------------------------------------------------------ cadastro de membros
+
+const memberSchema = z.object({
+  name: z.string().trim().min(1, "Informe o nome."),
+  email: z.string().trim().email("Informe um e-mail válido."),
+  role: z.nativeEnum(Role),
+});
+
+/**
+ * Cadastra um membro da equipe. A senha temporária volta UMA vez, para quem
+ * cadastrou repassar — ela não é guardada em texto nem fica recuperável.
+ */
+export async function createMemberAction(
+  input: unknown
+): Promise<ActionResult<{ name: string; email: string; temporaryPassword: string }>> {
+  const session = await requireManager();
+  if (!session) return DENIED;
+
+  const parsed = memberSchema.safeParse(input);
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos.", status: 400 };
+
+  try {
+    const result = await createMemberAccount(parsed.data.name, parsed.data.email, parsed.data.role);
+    if ("error" in result) return { ok: false, error: result.error, status: 409 };
+
+    await audit(session.userId, "user", result.user.email, null, ROLE_LABELS[result.user.role]);
+    revalidatePath("/configuracoes");
+    return {
+      ok: true,
+      data: {
+        name: result.user.name,
+        email: result.user.email,
+        temporaryPassword: result.temporaryPassword,
+      },
+    };
   } catch (err) {
     return toResult(err);
   }

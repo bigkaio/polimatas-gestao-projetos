@@ -43,7 +43,7 @@ inteiro para aquele papel, independentemente das outras capacidades.
 | Aba | O que faz |
 |---|---|
 | **Permissões por papel** | Liga e desliga cada capacidade por papel. O contorno âmbar marca o que difere do padrão; "Restaurar padrão do briefing" desfaz tudo. |
-| **Usuários** | Troca o papel de cada pessoa. A pessoa afetada recebe notificação. |
+| **Usuários** | **Adicionar membro** (nome, e-mail, papel): o sistema gera uma senha temporária exibida uma única vez, e a pessoa define a própria senha no primeiro acesso. Também troca o papel de cada pessoa, e quem é afetado recebe notificação. |
 | **Histórico** | Trilha auditável de toda mudança de permissão e de papel: quem mudou, o quê, de que valor para qual e quando. |
 
 Guardas do servidor, não da interface:

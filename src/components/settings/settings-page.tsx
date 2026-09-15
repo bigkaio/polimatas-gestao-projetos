@@ -11,12 +11,20 @@ import {
 import { ROLE_LABELS, type Capability, type PermissionMatrix } from "@/core/permissions";
 import { relativeTime } from "@/lib/format";
 import { useToast } from "@/components/toast";
+import { AddMember } from "./add-member";
 
 type Role = keyof typeof ROLE_LABELS;
 type EditableRole = "sales" | "member" | "manager";
 
 type CapabilityDTO = { key: Capability; group: string; label: string; help: string };
-type UserDTO = { id: string; name: string; email: string; role: Role; createdAt: string };
+type UserDTO = {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  createdAt: string;
+  mustChangePassword: boolean;
+};
 type AuditDTO = {
   id: string;
   actorName: string;
@@ -279,6 +287,7 @@ export function SettingsPage({
 
       {tab === "users" && (
         <section className="mt-6 space-y-3">
+          <AddMember />
           {users.map((user) => (
             <div
               key={user.id}
@@ -290,6 +299,14 @@ export function SettingsPage({
                   {user.id === currentUserId && (
                     <span className="ml-2 rounded-full border border-white/15 px-2 py-0.5 text-xs text-gray-400">
                       você
+                    </span>
+                  )}
+                  {user.mustChangePassword && (
+                    <span
+                      title="Ainda não fez o primeiro acesso para trocar a senha temporária."
+                      className="ml-2 rounded-full border border-amber-400/30 px-2 py-0.5 text-xs text-amber-300"
+                    >
+                      aguardando primeiro acesso
                     </span>
                   )}
                 </p>
@@ -311,7 +328,8 @@ export function SettingsPage({
           ))}
           <p className="text-xs text-gray-500">
             Você não altera o próprio papel, e o sistema recusa rebaixar o último administrador.
-            Quem tem o papel trocado recebe uma notificação.
+            Quem tem o papel trocado recebe uma notificação. A pessoa também pode criar a própria conta
+            em /cadastro — nesse caso entra como Executor.
           </p>
         </section>
       )}
@@ -330,11 +348,12 @@ export function SettingsPage({
                   className="flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-xl border border-white/10 bg-[#141413] px-4 py-3 text-sm"
                 >
                   <span className="rounded-full border border-white/15 px-2 py-0.5 text-xs text-gray-400">
-                    {a.kind === "role" ? "papel" : "permissão"}
+                    {a.kind === "role" ? "papel" : a.kind === "user" ? "cadastro" : "permissão"}
                   </span>
                   <strong className="text-gray-200">{a.target}</strong>
                   <span className="text-gray-400">
-                    {a.before} → <strong className="text-cyan-400">{a.after}</strong>
+                    {a.before ? <>{a.before} → </> : "cadastrado como "}
+                    <strong className="text-cyan-400">{a.after}</strong>
                   </span>
                   <span className="ml-auto text-xs text-gray-500">
                     {a.actorName} · {relativeTime(a.createdAt)}

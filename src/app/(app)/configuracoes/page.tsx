@@ -15,7 +15,7 @@ export default async function Page() {
   const [matrix, users, audits] = await Promise.all([
     loadPermissionMatrix(),
     prisma.profile.findMany({
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      select: { id: true, name: true, email: true, role: true, createdAt: true, mustChangePassword: true },
       orderBy: [{ role: "asc" }, { name: "asc" }],
     }),
     prisma.permissionAudit.findMany({
@@ -37,6 +37,7 @@ export default async function Page() {
         email: u.email,
         role: u.role,
         createdAt: u.createdAt.toISOString(),
+        mustChangePassword: u.mustChangePassword,
       }))}
       audits={audits.map((a) => ({
         id: a.id,

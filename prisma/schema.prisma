@@ -51,6 +51,8 @@ model Profile {
   role         Role     @default(member)
   avatarUrl    String?  @map("avatar_url")
   passwordHash String   @map("password_hash")
+  /// Conta criada pelo admin com senha temporária: troca obrigatória no primeiro login.
+  mustChangePassword Boolean @default(false) @map("must_change_password")
   createdAt    DateTime @default(now()) @map("created_at")
 
   assignedCards Card[]         @relation("CardAssignee")

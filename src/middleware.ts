@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
 const PUBLIC_PATHS = ["/login", "/cadastro", "/api/cron"];
+const SET_PASSWORD = "/definir-senha";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -11,7 +12,16 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get("polimatas_session")?.value;
   if (token) {
     try {
-      await jwtVerify(token, new TextEncoder().encode(process.env.SESSION_SECRET ?? "dev-secret"));
+      const { payload } = await jwtVerify(
+        token,
+        new TextEncoder().encode(process.env.SESSION_SECRET ?? "dev-secret")
+      );
+      // Conta criada pelo admin com senha temporária: nada abre até a troca.
+      if (payload.mustChangePassword === true && !pathname.startsWith(SET_PASSWORD)) {
+        const url = request.nextUrl.clone();
+        url.pathname = SET_PASSWORD;
+        return NextResponse.redirect(url);
+      }
       return NextResponse.next();
     } catch {
       /* token inválido → login */
