@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import * as domain from "@/core/domain";
 import { ComplianceError } from "@/core/errors";
 import type { Actor } from "@/core/events";
+import { actorWithRole, cleanupTestUsers } from "./helpers";
 
 /**
  * Testes de integração dos motores contra o Postgres real (US-31: o bloqueio
@@ -32,14 +33,13 @@ async function freshProject(title: string, listStage = "em_andamento") {
 }
 
 beforeAll(async () => {
-  const managerProfile = await prisma.profile.findUniqueOrThrow({
-    where: { email: "gestor@polimatas.dev" },
-  });
-  const salesProfile = await prisma.profile.findUniqueOrThrow({
-    where: { email: "vendas@polimatas.dev" },
-  });
-  manager = { id: managerProfile.id, role: "manager" };
-  salesActor = { id: salesProfile.id, role: "sales" };
+  // Restos de uma execução anterior saem ANTES de criar as contas novas.
+  await cleanupTestUsers();
+
+  // Contas próprias de teste: os papéis dos usuários de demonstração mudam
+  // conforme quem usa o sistema, e a suíte não pode depender disso.
+  manager = await actorWithRole("manager");
+  salesActor = await actorWithRole("sales");
 
   salesBoardId = (await prisma.board.findUniqueOrThrow({ where: { key: "sales" } })).id;
   projectsBoardId = (await prisma.board.findUniqueOrThrow({ where: { key: "projects" } })).id;
@@ -54,6 +54,7 @@ afterAll(async () => {
   // Não deixa resíduo de teste nos dados de demonstração.
   await prisma.notification.deleteMany({ where: { message: { contains: "[teste]" } } });
   await prisma.card.deleteMany({ where: { title: { startsWith: "[teste]" } } });
+  await cleanupTestUsers();
 });
 
 describe("US-33/US-31 — compliance bloqueia no servidor", () => {
@@ -236,10 +237,7 @@ describe("US-26 — automação não fura o compliance", () => {
 
 describe("Matriz de permissões (seção 3.1)", () => {
   it("member não cria card de projeto; sales não cria projeto", async () => {
-    const memberProfile = await prisma.profile.findUniqueOrThrow({
-      where: { email: "executor@polimatas.dev" },
-    });
-    const member: Actor = { id: memberProfile.id, role: "member" };
+    const member = await actorWithRole("member");
     await expect(
       domain.createCard(
         {

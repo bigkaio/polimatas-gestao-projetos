@@ -2,19 +2,16 @@ import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import * as domain from "@/core/domain";
 import { PermissionError } from "@/core/errors";
-import type { Actor } from "@/core/events";
 import { DEFAULT_MATRIX, buildUserPermissions, can, defaultFor } from "@/core/permissions";
 import { invalidatePermissionCache, loadUserPermissions } from "@/core/permission-store";
+import { actorWithRole, cleanupTestUsers } from "./helpers";
 
 /**
  * As permissões são por PESSOA. A função continua existindo como modelo:
  * sem personalização, vale o padrão dela.
  */
 
-async function actorOf(email: string): Promise<Actor> {
-  const u = await prisma.profile.findUniqueOrThrow({ where: { email } });
-  return { id: u.id, role: u.role };
-}
+
 
 async function personalizar(userId: string, capability: string, allowed: boolean) {
   await prisma.userPermission.upsert({
@@ -27,12 +24,13 @@ async function personalizar(userId: string, capability: string, allowed: boolean
 
 afterEach(async () => {
   await prisma.userPermission.deleteMany({});
+  await cleanupTestUsers();
   invalidatePermissionCache();
 });
 
 describe("modelo da função", () => {
   it("sem personalização, a pessoa segue o padrão do papel dela", async () => {
-    const vendas = await actorOf("vendas@polimatas.dev");
+    const vendas = await actorWithRole("sales");
     const perms = await loadUserPermissions(vendas.id);
     expect(perms).toEqual({ role: "sales", overrides: {} });
     expect(can(perms!, "board.sales.mutate")).toBe(true);
@@ -43,8 +41,8 @@ describe("modelo da função", () => {
   });
 
   it("a personalização de uma pessoa vence o modelo — e não contamina quem tem a mesma função", async () => {
-    const vendas = await actorOf("vendas@polimatas.dev");
-    const executor = await actorOf("executor@polimatas.dev");
+    const vendas = await actorWithRole("sales");
+    const executor = await actorWithRole("member");
     await personalizar(executor.id, "board.projects.mutate", true);
 
     expect(can((await loadUserPermissions(executor.id))!, "board.projects.mutate")).toBe(true);
@@ -59,7 +57,7 @@ describe("modelo da função", () => {
   });
 
   it("dois admins são independentes: dá para tirar permissão de um deles", async () => {
-    const admin = await actorOf("admin@polimatas.dev");
+    const admin = await actorWithRole("admin");
     await personalizar(admin.id, "compliance.manage", false);
     expect(can((await loadUserPermissions(admin.id))!, "compliance.manage")).toBe(false);
   });
@@ -80,7 +78,7 @@ describe("efeito no domínio", () => {
 
   it("nega ao vendedor criar card de projeto (modelo da função)", async () => {
     await ids();
-    const sales = await actorOf("vendas@polimatas.dev");
+    const sales = await actorWithRole("sales");
     await expect(
       domain.createCard(
         {
@@ -97,7 +95,7 @@ describe("efeito no domínio", () => {
 
   it("libera assim que a permissão é dada àquela pessoa", async () => {
     await ids();
-    const sales = await actorOf("vendas@polimatas.dev");
+    const sales = await actorWithRole("sales");
     await personalizar(sales.id, "board.projects.mutate", true);
 
     const card = await domain.createCard(
@@ -115,8 +113,8 @@ describe("efeito no domínio", () => {
   });
 
   it("desligar `task.complete` de uma pessoa recusa a conclusão só para ela", async () => {
-    const manager = await actorOf("gestor@polimatas.dev");
-    const admin = await actorOf("admin@polimatas.dev");
+    const manager = await actorWithRole("manager");
+    const admin = await actorWithRole("admin");
     const card = await prisma.card.findFirstOrThrow({ where: { type: "project" } });
     const task = await domain.createTask(
       card.id,
