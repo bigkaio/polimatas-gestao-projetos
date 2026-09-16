@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
-import { canMutateBoard } from "@/core/permission-store";
+import { canManageLists, canMutateBoard } from "@/core/permission-store";
 import type { BoardDTO, CardDTO, FunnelStats, UserDTO } from "@/lib/dto";
 import { BoardView } from "@/components/board/board-view";
 
@@ -28,6 +28,7 @@ export default async function BoardPage({ params }: { params: { key: string } })
   });
 
   const users: UserDTO[] = await prisma.profile.findMany({
+    where: { deactivatedAt: null },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });
@@ -42,6 +43,7 @@ export default async function BoardPage({ params }: { params: { key: string } })
       stageKey: l.stageKey,
       isTerminal: l.isTerminal,
       semantics: l.semantics,
+      color: l.color,
     })),
   };
 
@@ -98,7 +100,8 @@ export default async function BoardPage({ params }: { params: { key: string } })
       initialCards={cardDTOs}
       users={users}
       funnel={funnel}
-      canMutate={await canMutateBoard(session.role, board.type)}
+      canMutate={await canMutateBoard(session.userId, board.type)}
+      canManageLists={await canManageLists(session.userId)}
       currentUserId={session.userId}
     />
   );

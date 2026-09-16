@@ -1,61 +1,67 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import * as domain from "@/core/domain";
 import { PermissionError } from "@/core/errors";
 import type { Actor } from "@/core/events";
-import { DEFAULT_MATRIX, applyOverrides, can } from "@/core/permissions";
-import { invalidatePermissionCache, loadPermissionMatrix } from "@/core/permission-store";
+import { DEFAULT_MATRIX, buildUserPermissions, can, defaultFor } from "@/core/permissions";
+import { invalidatePermissionCache, loadUserPermissions } from "@/core/permission-store";
 
 /**
- * A matriz de permissões é editável pelo admin (seção 3.1) e o efeito precisa
- * valer na camada de domínio — não só na interface.
+ * As permissões são por PESSOA. A função continua existindo como modelo:
+ * sem personalização, vale o padrão dela.
  */
 
 async function actorOf(email: string): Promise<Actor> {
-  const user = await prisma.profile.findUniqueOrThrow({ where: { email } });
-  return { id: user.id, role: user.role };
+  const u = await prisma.profile.findUniqueOrThrow({ where: { email } });
+  return { id: u.id, role: u.role };
 }
 
-async function override(role: "sales" | "member" | "manager", capability: string, allowed: boolean) {
-  await prisma.rolePermission.upsert({
-    where: { role_capability: { role, capability } },
-    create: { role, capability, allowed },
+async function personalizar(userId: string, capability: string, allowed: boolean) {
+  await prisma.userPermission.upsert({
+    where: { userId_capability: { userId, capability } },
+    create: { userId, capability, allowed },
     update: { allowed },
   });
-  invalidatePermissionCache();
+  invalidatePermissionCache(userId);
 }
 
 afterEach(async () => {
-  await prisma.rolePermission.deleteMany({});
+  await prisma.userPermission.deleteMany({});
   invalidatePermissionCache();
 });
 
-describe("matriz de permissões", () => {
-  it("sem overrides, entrega o padrão do briefing", async () => {
-    const matrix = await loadPermissionMatrix();
-    expect(matrix).toEqual(DEFAULT_MATRIX);
-    expect(can(matrix, "sales", "board.projects.mutate")).toBe(false);
-    expect(can(matrix, "member", "board.sales.mutate")).toBe(false);
+describe("modelo da função", () => {
+  it("sem personalização, a pessoa segue o padrão do papel dela", async () => {
+    const vendas = await actorOf("vendas@polimatas.dev");
+    const perms = await loadUserPermissions(vendas.id);
+    expect(perms).toEqual({ role: "sales", overrides: {} });
+    expect(can(perms!, "board.sales.mutate")).toBe(true);
+    expect(can(perms!, "board.projects.mutate")).toBe(false);
+    expect(defaultFor("sales", "automations.manage")).toBe(
+      DEFAULT_MATRIX.sales["automations.manage"]
+    );
   });
 
-  it("o override do admin substitui o padrão", async () => {
-    await override("member", "board.sales.mutate", true);
-    const matrix = await loadPermissionMatrix();
-    expect(can(matrix, "member", "board.sales.mutate")).toBe(true);
+  it("a personalização de uma pessoa vence o modelo — e não contamina quem tem a mesma função", async () => {
+    const vendas = await actorOf("vendas@polimatas.dev");
+    const executor = await actorOf("executor@polimatas.dev");
+    await personalizar(executor.id, "board.projects.mutate", true);
+
+    expect(can((await loadUserPermissions(executor.id))!, "board.projects.mutate")).toBe(true);
+    expect(can((await loadUserPermissions(vendas.id))!, "board.projects.mutate")).toBe(false);
   });
 
-  it("ignora override gravado para admin — ele nunca perde capacidade", () => {
-    const matrix = applyOverrides([
-      { role: "admin", capability: "compliance.manage", allowed: false },
+  it("capacidade desconhecida no banco é ignorada", () => {
+    const perms = buildUserPermissions("sales", [
+      { capability: "capacidade.inexistente", allowed: true },
     ]);
-    expect(can(matrix, "admin", "compliance.manage")).toBe(true);
+    expect(perms.overrides).toEqual({});
   });
 
-  it("ignora capacidade desconhecida sem derrubar a matriz", () => {
-    const matrix = applyOverrides([
-      { role: "sales", capability: "capacidade.inexistente", allowed: true },
-    ]);
-    expect(matrix.sales).toEqual(DEFAULT_MATRIX.sales);
+  it("dois admins são independentes: dá para tirar permissão de um deles", async () => {
+    const admin = await actorOf("admin@polimatas.dev");
+    await personalizar(admin.id, "compliance.manage", false);
+    expect(can((await loadUserPermissions(admin.id))!, "compliance.manage")).toBe(false);
   });
 });
 
@@ -63,16 +69,17 @@ describe("efeito no domínio", () => {
   let projectsBoardId: string;
   let backlogId: string;
 
-  beforeEach(async () => {
+  async function ids() {
     const board = await prisma.board.findUniqueOrThrow({
       where: { key: "projects" },
       include: { lists: true },
     });
     projectsBoardId = board.id;
     backlogId = board.lists.find((l) => l.stageKey === "backlog")!.id;
-  });
+  }
 
-  it("nega ao vendedor criar card de projeto (padrão)", async () => {
+  it("nega ao vendedor criar card de projeto (modelo da função)", async () => {
+    await ids();
     const sales = await actorOf("vendas@polimatas.dev");
     await expect(
       domain.createCard(
@@ -80,7 +87,7 @@ describe("efeito no domínio", () => {
           boardId: projectsBoardId,
           listId: backlogId,
           type: "project",
-          title: "Projeto proibido",
+          title: "[perm] proibido",
           createdBy: sales.id,
         },
         sales
@@ -88,16 +95,17 @@ describe("efeito no domínio", () => {
     ).rejects.toBeInstanceOf(PermissionError);
   });
 
-  it("passa a permitir assim que o admin liga a capacidade", async () => {
+  it("libera assim que a permissão é dada àquela pessoa", async () => {
+    await ids();
     const sales = await actorOf("vendas@polimatas.dev");
-    await override("sales", "board.projects.mutate", true);
+    await personalizar(sales.id, "board.projects.mutate", true);
 
     const card = await domain.createCard(
       {
         boardId: projectsBoardId,
         listId: backlogId,
         type: "project",
-        title: "Projeto liberado pela matriz",
+        title: "[perm] liberado para esta pessoa",
         createdBy: sales.id,
       },
       sales
@@ -106,20 +114,19 @@ describe("efeito no domínio", () => {
     await prisma.card.delete({ where: { id: card.id } });
   });
 
-  it("desligar `task.complete` recusa concluir tarefa do checklist", async () => {
+  it("desligar `task.complete` de uma pessoa recusa a conclusão só para ela", async () => {
     const manager = await actorOf("gestor@polimatas.dev");
+    const admin = await actorOf("admin@polimatas.dev");
     const card = await prisma.card.findFirstOrThrow({ where: { type: "project" } });
     const task = await domain.createTask(
       card.id,
-      { title: "Tarefa de teste de permissão", dueDate: new Date(Date.now() + 86_400_000) },
+      { title: "[perm] tarefa de teste", dueDate: new Date(Date.now() + 86_400_000) },
       manager
     );
 
-    await override("manager", "task.complete", false);
+    await personalizar(manager.id, "task.complete", false);
     await expect(domain.toggleTask(task.id, true, manager)).rejects.toBeInstanceOf(PermissionError);
-
-    await override("manager", "task.complete", true);
-    await expect(domain.toggleTask(task.id, true, manager)).resolves.toBeTruthy();
+    await expect(domain.toggleTask(task.id, true, admin)).resolves.toBeTruthy();
 
     await prisma.task.delete({ where: { id: task.id } });
   });

@@ -9,26 +9,34 @@
 
 ## 3.1 Matriz de permissões
 
-A tabela abaixo é o **padrão de fábrica**. O administrador ajusta qualquer célula
-em **Configurações → Permissões por papel**, e o override vale imediatamente na
-camada de domínio — não é um filtro de interface.
+**As permissões são de cada pessoa, não da função.** A tabela abaixo é o
+**modelo** de cada papel: é o que vale para quem tem aquela função enquanto o
+administrador não personalizar nada. Em **Configurações → Pessoas e permissões**
+ele liga e desliga capacidade por capacidade, pessoa por pessoa, e o ajuste vale
+imediatamente na camada de domínio — não é filtro de interface.
 
 | Ação | Capacidade | `sales` | `member` | `manager` | `admin` |
 |---|---|:--:|:--:|:--:|:--:|
 | Ver ambos os quadros | — | ✅ | ✅ | ✅ | ✅ |
-| Criar/mover oportunidade | `board.sales.mutate` | ✅ | ❌ | ✅ | ✅🔒 |
-| Criar/mover card de projeto | `board.projects.mutate` | ❌ | ❌ | ✅ | ✅🔒 |
-| Editar card em que é responsável | `card.edit.own` | ✅ | ✅ | ✅ | ✅🔒 |
-| Editar card de outra pessoa | `card.edit.any` | ✅ | ✅ | ✅ | ✅🔒 |
-| Criar/editar/remover tarefa | `task.manage` | ✅ | ✅ | ✅ | ✅🔒 |
-| Concluir tarefa de checklist | `task.complete` | ✅ | ✅ | ✅ | ✅🔒 |
-| Criar/editar **automações** | `automations.manage` | ❌ | ❌ | ✅ | ✅🔒 |
-| Criar/editar **regras de compliance** | `compliance.manage` | ❌ | ❌ | ❌ | ✅🔒 |
-| Gerenciar usuários e permissões | `users.manage` | ❌ | ❌ | ❌ | ✅🔒 |
+| Criar/mover oportunidade | `board.sales.mutate` | ✅ | ❌ | ✅ | ✅ |
+| Criar/mover card de projeto | `board.projects.mutate` | ❌ | ❌ | ✅ | ✅ |
+| Editar card em que é responsável | `card.edit.own` | ✅ | ✅ | ✅ | ✅ |
+| Editar card de outra pessoa | `card.edit.any` | ✅ | ✅ | ✅ | ✅ |
+| Comentar nos cards | `card.comment` | ✅ | ✅ | ✅ | ✅ |
+| Criar, renomear e excluir colunas | `lists.manage` | ❌ | ❌ | ✅ | ✅ |
+| Criar/editar/remover tarefa | `task.manage` | ✅ | ✅ | ✅ | ✅ |
+| Concluir tarefa de checklist | `task.complete` | ✅ | ✅ | ✅ | ✅ |
+| Criar/editar **automações** | `automations.manage` | ❌ | ❌ | ✅ | ✅ |
+| Criar/editar **regras de compliance** | `compliance.manage` | ❌ | ❌ | ❌ | ✅ |
+| Gerenciar usuários e permissões | `users.manage` | ❌ | ❌ | ❌ | ✅ |
 
-✅/❌ = padrão, editável pelo admin. ✅🔒 = concedido e fixo: o `admin` mantém todas as
-capacidades sempre. Sem essa trava seria possível remover o acesso à própria
-tela de configurações e não haveria como voltar atrás pela interface.
+Todas as células são apenas o ponto de partida: qualquer permissão pode ser dada
+ou retirada de qualquer pessoa, inclusive de quem tem papel de administrador.
+Duas travas evitam o tiro no pé: **ninguém altera as próprias permissões** e o
+sistema **recusa deixar o sistema sem ninguém com `users.manage`**.
+
+Trocar a função de alguém troca o modelo; o que estiver personalizado continua
+valendo até ser devolvido ao padrão.
 
 `card.edit.any` e `task.manage` só valem dentro dos quadros que o papel já
 pode mexer — desligar `board.projects.mutate` fecha o quadro de projetos

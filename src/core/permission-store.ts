@@ -1,83 +1,120 @@
 import "server-only";
-import type { CardType, Role } from "@prisma/client";
+import type { CardType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
-  applyOverrides,
+  buildUserPermissions,
   can,
   canEditCardWith,
   canMutateBoardWith,
   type Capability,
-  type PermissionMatrix,
+  type UserPermissions,
 } from "./permissions";
 
 /**
- * Leitura da matriz de permissões no banco. Separado de `permissions.ts`
- * de propósito: o catálogo é puro e pode ser importado pela interface,
- * este módulo toca o Prisma e é só de servidor.
+ * Leitura das permissões de uma PESSOA. Separado de `permissions.ts` de
+ * propósito: o catálogo é puro e pode ser importado pela interface, este
+ * módulo toca o Prisma e é só de servidor.
  *
- * Cache de processo: a verificação acontece em toda mutação e reler a matriz
- * a cada uma seria desperdício. Toda escrita chama `invalidatePermissionCache()`
- * e o TTL curto cobre o caso de mais de uma instância do servidor.
+ * A função vem do banco, e não da sessão: assim, trocar o papel de alguém
+ * vale na hora, sem esperar o próximo login.
+ *
+ * Cache por pessoa, já que a verificação acontece em toda mutação. Toda
+ * gravação chama `invalidatePermissionCache()`, e o TTL curto cobre o caso de
+ * mais de uma instância do servidor.
  */
 const CACHE_TTL_MS = 10_000;
-let cache: { matrix: PermissionMatrix; at: number } | null = null;
+const cache = new Map<string, { perms: UserPermissions | null; active: boolean; at: number }>();
 
-export function invalidatePermissionCache(): void {
-  cache = null;
+export function invalidatePermissionCache(userId?: string): void {
+  if (userId) cache.delete(userId);
+  else cache.clear();
 }
 
-export async function loadPermissionMatrix(): Promise<PermissionMatrix> {
-  if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.matrix;
-  const overrides = await prisma.rolePermission.findMany({
-    select: { role: true, capability: true, allowed: true },
+async function load(userId: string) {
+  const hit = cache.get(userId);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit;
+
+  const user = await prisma.profile.findUnique({
+    where: { id: userId },
+    select: {
+      role: true,
+      deactivatedAt: true,
+      permissions: { select: { capability: true, allowed: true } },
+    },
   });
-  const matrix = applyOverrides(overrides);
-  cache = { matrix, at: Date.now() };
-  return matrix;
+  const entry = {
+    // Pessoa desativada não tem capacidade nenhuma — a checagem morre aqui,
+    // sem depender de cada tela lembrar de conferir.
+    perms: user && !user.deactivatedAt ? buildUserPermissions(user.role, user.permissions) : null,
+    active: !!user && !user.deactivatedAt,
+    at: Date.now(),
+  };
+  cache.set(userId, entry);
+  return entry;
 }
 
-export async function hasCapability(role: Role, capability: Capability): Promise<boolean> {
-  return can(await loadPermissionMatrix(), role, capability);
+export async function loadUserPermissions(userId: string): Promise<UserPermissions | null> {
+  return (await load(userId)).perms;
+}
+
+/** A pessoa ainda pode usar o sistema? */
+export async function isActiveUser(userId: string): Promise<boolean> {
+  return (await load(userId)).active;
+}
+
+export async function hasCapability(userId: string, capability: Capability): Promise<boolean> {
+  const perms = await loadUserPermissions(userId);
+  return perms ? can(perms, capability) : false;
 }
 
 // ------------------------------------------------------- checagens de uso
 
-export async function canMutateBoard(role: Role, boardType: CardType): Promise<boolean> {
-  return canMutateBoardWith(await loadPermissionMatrix(), role, boardType);
+export async function canMutateBoard(userId: string, boardType: CardType): Promise<boolean> {
+  const perms = await loadUserPermissions(userId);
+  return perms ? canMutateBoardWith(perms, boardType) : false;
 }
 
 export async function canEditCard(
-  role: Role,
+  userId: string,
   boardType: CardType,
-  card: { assigneeId: string | null },
-  userId: string
+  card: { assigneeId: string | null }
 ): Promise<boolean> {
-  return canEditCardWith(await loadPermissionMatrix(), role, boardType, card, userId);
+  const perms = await loadUserPermissions(userId);
+  return perms ? canEditCardWith(perms, boardType, card, userId) : false;
 }
 
 /** Criar, editar ou remover tarefa: exige a capacidade e poder editar o card. */
 export async function canManageTasks(
-  role: Role,
+  userId: string,
   boardType: CardType,
-  card: { assigneeId: string | null },
-  userId: string
+  card: { assigneeId: string | null }
 ): Promise<boolean> {
-  const matrix = await loadPermissionMatrix();
-  return can(matrix, role, "task.manage") && canEditCardWith(matrix, role, boardType, card, userId);
+  const perms = await loadUserPermissions(userId);
+  if (!perms) return false;
+  return can(perms, "task.manage") && canEditCardWith(perms, boardType, card, userId);
 }
 
-export async function canCompleteTask(role: Role): Promise<boolean> {
-  return hasCapability(role, "task.complete");
+export async function canCompleteTask(userId: string): Promise<boolean> {
+  return hasCapability(userId, "task.complete");
 }
 
-export async function canManageAutomations(role: Role): Promise<boolean> {
-  return hasCapability(role, "automations.manage");
+/** Comentar exige a capacidade; ver o card já basta, não é preciso poder editá-lo. */
+export async function canComment(userId: string): Promise<boolean> {
+  return hasCapability(userId, "card.comment");
 }
 
-export async function canManageCompliance(role: Role): Promise<boolean> {
-  return hasCapability(role, "compliance.manage");
+export async function canManageLists(userId: string): Promise<boolean> {
+  return hasCapability(userId, "lists.manage");
 }
 
-export async function canManageUsers(role: Role): Promise<boolean> {
-  return hasCapability(role, "users.manage");
+export async function canManageAutomations(userId: string): Promise<boolean> {
+  return hasCapability(userId, "automations.manage");
+}
+
+export async function canManageCompliance(userId: string): Promise<boolean> {
+  return hasCapability(userId, "compliance.manage");
+}
+
+export async function canManageUsers(userId: string): Promise<boolean> {
+  return hasCapability(userId, "users.manage");
 }

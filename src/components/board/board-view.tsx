@@ -23,6 +23,8 @@ import { useToast } from "@/components/toast";
 import { brl, dueStatus } from "@/lib/format";
 import { CardItem } from "./card-item";
 import { AddCard } from "./add-card";
+import { ManageLists } from "./manage-lists";
+import { LIST_COLORS, listColor } from "@/lib/colors";
 import { CloseDialogs, type PendingMove } from "./close-dialogs";
 
 /**
@@ -47,6 +49,7 @@ function ListColumn({
   list,
   cards,
   boardKey,
+  users,
   canMutate,
   showSum,
   dragging,
@@ -55,6 +58,7 @@ function ListColumn({
   list: ListDTO;
   cards: CardDTO[];
   boardKey: string;
+  users: UserDTO[];
   canMutate: boolean;
   showSum: boolean;
   dragging: boolean;
@@ -73,8 +77,12 @@ function ListColumn({
         blocked && "opacity-40"
       )}
     >
-      <header className="flex items-center justify-between px-3 pb-1 pt-3">
-        <h2 className="text-sm font-semibold text-gray-200">
+      <span
+        aria-hidden
+        className={clsx("mx-3 mt-3 h-1 rounded-full", LIST_COLORS[listColor(list.color, list.semantics)].bar)}
+      />
+      <header className="flex items-center justify-between px-3 pb-1 pt-2">
+        <h2 className={clsx("text-sm font-semibold", LIST_COLORS[listColor(list.color, list.semantics)].text)}>
           {list.name}
           <span className="ml-2 rounded-full bg-[#141413]/10 px-2 py-0.5 text-xs font-medium text-gray-400">
             {cards.length}
@@ -101,7 +109,7 @@ function ListColumn({
       </SortableContext>
       {canMutate && !list.isTerminal ? (
         <div className="px-2 pb-2">
-          <AddCard listId={list.id} isOpportunity={boardKey === "sales"} />
+          <AddCard listId={list.id} isOpportunity={boardKey === "sales"} users={users} />
         </div>
       ) : null}
     </section>
@@ -114,6 +122,7 @@ export function BoardView({
   users,
   funnel,
   canMutate,
+  canManageLists,
   currentUserId,
 }: {
   board: BoardDTO;
@@ -121,6 +130,7 @@ export function BoardView({
   users: UserDTO[];
   funnel: FunnelStats;
   canMutate: boolean;
+  canManageLists: boolean;
   currentUserId: string;
 }) {
   const router = useRouter();
@@ -323,6 +333,15 @@ export function BoardView({
             <option value="late">Atrasados</option>
             <option value="week">Vence em breve</option>
           </select>
+          {canManageLists ? (
+            <ManageLists
+              boardId={board.id}
+              lists={board.lists}
+              counts={Object.fromEntries(
+                board.lists.map((l) => [l.id, cards.filter((c) => c.listId === l.id).length])
+              )}
+            />
+          ) : null}
         </div>
       </div>
 
@@ -344,6 +363,7 @@ export function BoardView({
               list={list}
               cards={byList.get(list.id) ?? []}
               boardKey={board.key}
+              users={users}
               canMutate={canMutate}
               showSum={board.key === "sales"}
               dragging={activeCard !== null}

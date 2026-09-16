@@ -10,7 +10,7 @@ import { toResult, type ActionResult } from "./result";
 
 async function requireAdmin() {
   const session = await requireSession();
-  return (await canManageCompliance(session.role)) ? session : null;
+  return (await canManageCompliance(session.userId)) ? session : null;
 }
 
 export async function saveComplianceRuleAction(input: unknown): Promise<ActionResult<{ id: string }>> {

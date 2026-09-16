@@ -71,7 +71,7 @@ flowchart TD
     ENGINE -->|"ações também passam pelo Guard"| GUARD
 ```
 
-O laço de volta do `AutomationEngine` para o `ComplianceGuard` é deliberado: **uma automação não pode furar uma regra de compliance**. Quando isso acontece, a execução é registrada como `blocked_by_compliance` e fica visível no histórico do card.
+O laço de volta do `AutomationEngine` para o `ComplianceGuard` é deliberado: **uma automação não pode furar uma regra de compliance**. Quando isso acontece, a execução é registrada como `blocked_by_compliance` e fica visível no histórico de execuções das automações.
 
 Detalhamento completo — modelo de dados, motor de automações, motor de compliance e segurança — em **[Arquitetura](https://bigkaio.github.io/polimatas-gestao-projetos/arquitetura/)**.
 
@@ -146,7 +146,7 @@ As decisões de arquitetura estão registradas no [backlog](https://bigkaio.gith
 
 ## Status do projeto
 
-✅ Funcional — dois quadros com drag and drop, matriz de permissões editável pelo admin (Configurações → Permissões por papel, aplicada no servidor e auditada), cadastro de membros da equipe pelo admin com senha temporária e troca obrigatória no primeiro acesso, integração automática venda → projeto, motor de automações configurável pela interface (gatilho → condições → ações), motor de compliance bloqueante em três camadas (UI, servidor e trigger no Postgres), gatilhos temporais via cron, notificações, histórico auditável e seed de demonstração. Motores, permissões e fluxo central cobertos por 23 testes automatizados (`npm test`).
+✅ Funcional — dois quadros com drag and drop, matriz de permissões editável pelo admin (Configurações → Permissões por papel, aplicada no servidor e auditada), cadastro de membros da equipe pelo admin com senha temporária e troca obrigatória no primeiro acesso, integração automática venda → projeto, motor de automações configurável pela interface (gatilho → condições → ações), motor de compliance bloqueante em três camadas (UI, servidor e trigger no Postgres), gatilhos temporais via cron, comentários nos cards, colunas personalizáveis (nome, cor, ordem), painel com gráficos de vendas e projetos, notificações, histórico auditável e seed de demonstração. Motores, permissões e fluxo central cobertos por 41 testes automatizados (`npm test`).
 
 ## Critérios de avaliação
 

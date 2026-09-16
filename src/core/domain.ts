@@ -7,6 +7,8 @@ import { dispatch } from "./engine";
 import { NotFoundError, PermissionError } from "./errors";
 import type { Actor, AutomationContext } from "./events";
 import {
+  canComment,
+  canManageLists,
   canCompleteTask,
   canEditCard,
   canManageTasks,
@@ -87,7 +89,7 @@ export async function createCard(
     include: { board: true },
   });
   if (!list || list.boardId !== data.boardId) throw new NotFoundError("Lista não encontrada.");
-  if (actor && !(await canMutateBoard(actor.role, list.board.type))) {
+  if (actor && !(await canMutateBoard(actor.id, list.board.type))) {
     throw new PermissionError(
       list.board.type === "opportunity"
         ? "Apenas vendas, gestores e admins criam oportunidades."
@@ -186,7 +188,7 @@ export async function updateCard(
   auto?: AutomationContext
 ): Promise<Card> {
   const card = await requireCard(cardId);
-  if (actor && !(await canEditCard(actor.role, card.board.key === "sales" ? "opportunity" : "project", card, actor.id))) {
+  if (actor && !(await canEditCard(actor.id, card.board.key === "sales" ? "opportunity" : "project", card))) {
     throw new PermissionError("Você só edita cards em que é responsável.");
   }
 
@@ -262,7 +264,7 @@ export async function moveCard(
   if (!toList || toList.boardId !== card.boardId)
     throw new NotFoundError("Lista de destino não encontrada.");
 
-  if (actor && !(await canMutateBoard(actor.role, toList.board.type))) {
+  if (actor && !(await canMutateBoard(actor.id, toList.board.type))) {
     throw new PermissionError(
       toList.board.type === "opportunity"
         ? "Apenas vendas, gestores e admins movem oportunidades."
@@ -330,6 +332,195 @@ export async function addComment(
   await log(cardId, actor?.id ?? null, "comment", null, { text }, auto);
 }
 
+// ---------------------------------------------------------------- colunas
+
+/**
+ * Colunas (listas) do quadro. Regras que sustentam o resto do sistema:
+ *
+ * - `stageKey` é a identidade da coluna para automações e compliance
+ *   (`to_list`, `from_list`, `target_list`). Por isso ela é gerada na criação
+ *   e NUNCA muda no rename — trocar o nome exibido não pode quebrar regra.
+ * - Coluna com `semantics` tem função no fluxo (fecha venda, exige motivo,
+ *   bloqueia conclusão, recebe atraso) e não pode ser excluída.
+ * - Excluir exige destino para os cards; nada é apagado junto.
+ */
+
+function slugify(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40);
+}
+
+async function assertListManager(actor: Actor) {
+  if (!(await canManageLists(actor.id))) {
+    throw new PermissionError("Seu papel não gerencia as colunas do quadro.");
+  }
+}
+
+async function uniqueStageKey(boardId: string, name: string): Promise<string> {
+  const base = slugify(name) || "coluna";
+  for (let i = 0; i < 50; i++) {
+    const candidate = i === 0 ? base : `${base}_${i + 1}`;
+    const taken = await prisma.list.findUnique({
+      where: { boardId_stageKey: { boardId, stageKey: candidate } },
+    });
+    if (!taken) return candidate;
+  }
+  return `${base}_${Date.now()}`;
+}
+
+export async function createList(
+  boardId: string,
+  data: { name: string; color?: string | null },
+  actor: Actor
+) {
+  await assertListManager(actor);
+  const name = data.name.trim();
+  if (!name) throw new PermissionError("Dê um nome à coluna.");
+
+  const board = await prisma.board.findUnique({ where: { id: boardId } });
+  if (!board) throw new NotFoundError("Quadro não encontrado.");
+
+  const last = await prisma.list.findFirst({
+    where: { boardId },
+    orderBy: { position: "desc" },
+    select: { position: true },
+  });
+
+  return prisma.list.create({
+    data: {
+      boardId,
+      name,
+      stageKey: await uniqueStageKey(boardId, name),
+      position: (last?.position ?? 0) + 1,
+      color: data.color ?? null,
+    },
+  });
+}
+
+export async function updateList(
+  listId: string,
+  patch: { name?: string; color?: string | null },
+  actor: Actor
+) {
+  await assertListManager(actor);
+  const list = await prisma.list.findUnique({ where: { id: listId } });
+  if (!list) throw new NotFoundError("Coluna não encontrada.");
+
+  const name = patch.name?.trim();
+  if (patch.name !== undefined && !name) throw new PermissionError("A coluna precisa de um nome.");
+
+  // stageKey fica de fora de propósito: renomear não pode quebrar automação.
+  return prisma.list.update({
+    where: { id: listId },
+    data: { name: name ?? list.name, color: patch.color === undefined ? list.color : patch.color },
+  });
+}
+
+export async function deleteList(listId: string, moveToListId: string | null, actor: Actor) {
+  await assertListManager(actor);
+  const list = await prisma.list.findUnique({
+    where: { id: listId },
+    include: { _count: { select: { cards: true } } },
+  });
+  if (!list) throw new NotFoundError("Coluna não encontrada.");
+
+  if (list.semantics) {
+    throw new PermissionError(
+      "Esta coluna tem função no fluxo (fechamento, perda, conclusão ou atraso) e não pode ser excluída. Você pode renomeá-la."
+    );
+  }
+
+  const siblings = await prisma.list.count({ where: { boardId: list.boardId } });
+  if (siblings <= 1) throw new PermissionError("O quadro precisa de pelo menos uma coluna.");
+
+  if (list._count.cards > 0) {
+    if (!moveToListId) {
+      throw new PermissionError(
+        `Esta coluna tem ${list._count.cards} card(s). Escolha para onde movê-los antes de excluir.`
+      );
+    }
+    const target = await prisma.list.findUnique({ where: { id: moveToListId } });
+    if (!target || target.boardId !== list.boardId)
+      throw new NotFoundError("Coluna de destino não encontrada.");
+    if (target.id === list.id) throw new PermissionError("Escolha uma coluna diferente.");
+
+    // Move sem passar pelo motor: é uma operação de estrutura, não de fluxo —
+    // disparar automações de "card mudou de lista" aqui seria ruído.
+    await prisma.card.updateMany({ where: { listId }, data: { listId: target.id } });
+  }
+
+  await prisma.list.delete({ where: { id: listId } });
+}
+
+export async function reorderLists(boardId: string, orderedIds: string[], actor: Actor) {
+  await assertListManager(actor);
+  const lists = await prisma.list.findMany({ where: { boardId }, select: { id: true } });
+  const known = new Set(lists.map((l) => l.id));
+  if (orderedIds.length !== known.size || orderedIds.some((id) => !known.has(id))) {
+    throw new PermissionError("A ordem enviada não corresponde às colunas do quadro.");
+  }
+  await prisma.$transaction(
+    orderedIds.map((id, i) => prisma.list.update({ where: { id }, data: { position: i + 1 } }))
+  );
+}
+
+// ------------------------------------------------------------ comentários
+
+/**
+ * Comentário escrito por uma pessoa (ver `addComment` acima para a nota
+ * automática das automações). Fica na tabela `comments`: o autor pode editar
+ * e apagar, e por isso não entra em `activity_log`, que é imutável. Cada
+ * edição e remoção, porém, deixa rastro no log.
+ */
+export async function createComment(cardId: string, text: string, actor: Actor) {
+  await requireCard(cardId);
+  if (!(await canComment(actor.id))) {
+    throw new PermissionError("Seu papel não pode comentar nos cards.");
+  }
+  const body = text.trim();
+  if (!body) throw new PermissionError("Escreva algo antes de comentar.");
+
+  const comment = await prisma.comment.create({
+    data: { cardId, authorId: actor.id, text: body },
+  });
+  await log(cardId, actor.id, "comment.created", null, { commentId: comment.id });
+  return comment;
+}
+
+async function requireOwnComment(commentId: string, actor: Actor, verb: string) {
+  const comment = await prisma.comment.findUnique({ where: { id: commentId } });
+  if (!comment) throw new NotFoundError("Comentário não encontrado.");
+  // O admin modera; os demais mexem apenas no que escreveram.
+  const allowed = comment.authorId === actor.id || (verb === "remover" && actor.role === "admin");
+  if (!allowed) throw new PermissionError(`Você só pode ${verb} os próprios comentários.`);
+  return comment;
+}
+
+export async function updateComment(commentId: string, text: string, actor: Actor) {
+  const comment = await requireOwnComment(commentId, actor, "editar");
+  const body = text.trim();
+  if (!body) throw new PermissionError("O comentário não pode ficar vazio.");
+  if (body === comment.text) return comment;
+
+  const updated = await prisma.comment.update({
+    where: { id: commentId },
+    data: { text: body, editedAt: new Date() },
+  });
+  await log(comment.cardId, actor.id, "comment.edited", { text: comment.text }, { text: body });
+  return updated;
+}
+
+export async function deleteComment(commentId: string, actor: Actor) {
+  const comment = await requireOwnComment(commentId, actor, "remover");
+  await prisma.comment.delete({ where: { id: commentId } });
+  await log(comment.cardId, actor.id, "comment.deleted", { text: comment.text }, null);
+}
+
 // ---------------------------------------------------------------- tasks
 
 export async function createTask(
@@ -339,7 +530,7 @@ export async function createTask(
   auto?: AutomationContext
 ) {
   const card = await requireCard(cardId);
-  if (actor && !(await canManageTasks(actor.role, card.board.key === "sales" ? "opportunity" : "project", card, actor.id))) {
+  if (actor && !(await canManageTasks(actor.id, card.board.key === "sales" ? "opportunity" : "project", card))) {
     throw new PermissionError("Você só adiciona tarefas em cards que pode editar.");
   }
 
@@ -394,7 +585,7 @@ export async function updateTask(
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) throw new NotFoundError("Tarefa não encontrada.");
   const card = await requireCard(task.cardId);
-  if (actor && !(await canManageTasks(actor.role, card.board.key === "sales" ? "opportunity" : "project", card, actor.id))) {
+  if (actor && !(await canManageTasks(actor.id, card.board.key === "sales" ? "opportunity" : "project", card))) {
     throw new PermissionError("Você só edita tarefas de cards que pode editar.");
   }
 
@@ -420,7 +611,7 @@ export async function toggleTask(taskId: string, done: boolean, actor: Actor | n
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) throw new NotFoundError("Tarefa não encontrada.");
   const card = await requireCard(task.cardId);
-  if (actor && !(await canCompleteTask(actor.role))) {
+  if (actor && !(await canCompleteTask(actor.id))) {
     throw new PermissionError("Seu papel não pode concluir tarefas do checklist.");
   }
 
@@ -451,7 +642,7 @@ export async function deleteTask(taskId: string, actor: Actor | null) {
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) throw new NotFoundError("Tarefa não encontrada.");
   const card = await requireCard(task.cardId);
-  if (actor && !(await canManageTasks(actor.role, card.board.key === "sales" ? "opportunity" : "project", card, actor.id))) {
+  if (actor && !(await canManageTasks(actor.id, card.board.key === "sales" ? "opportunity" : "project", card))) {
     throw new PermissionError("Você só remove tarefas de cards que pode editar.");
   }
   await prisma.task.delete({ where: { id: taskId } });

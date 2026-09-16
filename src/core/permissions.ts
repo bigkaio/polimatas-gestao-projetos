@@ -2,22 +2,20 @@ import type { CardType, Role } from "@prisma/client";
 import { PermissionError } from "./errors";
 
 /**
- * MATRIZ DE PERMISSÕES (seção 3.1 do backlog).
+ * PERMISSÕES POR PESSOA.
  *
- * O padrão do briefing vive em DEFAULT_MATRIX; o admin pode sobrescrever
- * qualquer célula pela tela de Configurações, e o override é persistido em
- * `role_permissions`. Linha ausente no banco = valor padrão.
+ * A função (papel) continua existindo, mas como **modelo**: DEFAULT_MATRIX diz
+ * o que cada função libera por padrão. Quem manda é a pessoa — o admin ajusta
+ * capacidade por capacidade em `user_permissions`, e cada linha ali sobrepõe o
+ * modelo. Sem linha, vale o padrão da função.
  *
- * Invariante deliberada: `admin` tem todas as capacidades, sempre, e não é
- * editável. Sem isso o admin poderia se trancar para fora da própria tela
- * de configurações — e não haveria como voltar atrás pela interface.
+ * Não há mais a invariante "admin pode tudo, sempre": qualquer permissão pode
+ * ser retirada de qualquer pessoa. Contra o tiro no pé sobraram duas travas,
+ * aplicadas nas Server Actions: ninguém altera as próprias permissões, e o
+ * sistema recusa deixar o sistema sem ninguém com `users.manage`.
  */
 
 export const ROLES = ["sales", "member", "manager", "admin"] as const satisfies readonly Role[];
-
-/** Papéis cujas permissões o admin edita (todos menos ele próprio). */
-export const EDITABLE_ROLES = ["sales", "member", "manager"] as const;
-export type EditableRole = (typeof EDITABLE_ROLES)[number];
 
 export const ROLE_LABELS: Record<Role, string> = {
   sales: "Vendedor",
@@ -56,6 +54,12 @@ export const CAPABILITIES = [
     help: "Só nos quadros em que o papel já pode criar e mover.",
   },
   {
+    key: "card.comment",
+    group: "Cards",
+    label: "Comentar nos cards",
+    help: "Cada pessoa edita e apaga os próprios comentários; o admin apaga qualquer um.",
+  },
+  {
     key: "task.manage",
     group: "Checklist",
     label: "Criar, editar e remover tarefas",
@@ -66,6 +70,12 @@ export const CAPABILITIES = [
     group: "Checklist",
     label: "Concluir e reabrir tarefas",
     help: "Marcar item do checklist como feito.",
+  },
+  {
+    key: "lists.manage",
+    group: "Quadros",
+    label: "Criar, renomear e excluir colunas",
+    help: "As colunas com função especial (Fechado, Perdido, Concluído, Atrasados) nunca são excluídas.",
   },
   {
     key: "automations.manage",
@@ -95,21 +105,19 @@ function isCapability(value: string): value is Capability {
   return (CAPABILITY_KEYS as string[]).includes(value);
 }
 
-export function isEditableRole(value: string): value is EditableRole {
-  return (EDITABLE_ROLES as readonly string[]).includes(value);
-}
-
 export type PermissionMatrix = Record<Role, Record<Capability, boolean>>;
 
-/** Padrão do briefing (tabela 3.1 de `docs/personas.md`). */
+/** Modelo de cada função — o ponto de partida de quem tem aquele papel. */
 export const DEFAULT_MATRIX: PermissionMatrix = {
   sales: {
     "board.sales.mutate": true,
     "board.projects.mutate": false,
     "card.edit.own": true,
     "card.edit.any": true,
+    "card.comment": true,
     "task.manage": true,
     "task.complete": true,
+    "lists.manage": false,
     "automations.manage": false,
     "compliance.manage": false,
     "users.manage": false,
@@ -119,8 +127,10 @@ export const DEFAULT_MATRIX: PermissionMatrix = {
     "board.projects.mutate": false,
     "card.edit.own": true,
     "card.edit.any": true,
+    "card.comment": true,
     "task.manage": true,
     "task.complete": true,
+    "lists.manage": false,
     "automations.manage": false,
     "compliance.manage": false,
     "users.manage": false,
@@ -130,8 +140,10 @@ export const DEFAULT_MATRIX: PermissionMatrix = {
     "board.projects.mutate": true,
     "card.edit.own": true,
     "card.edit.any": true,
+    "card.comment": true,
     "task.manage": true,
     "task.complete": true,
+    "lists.manage": true,
     "automations.manage": true,
     "compliance.manage": false,
     "users.manage": false,
@@ -139,59 +151,55 @@ export const DEFAULT_MATRIX: PermissionMatrix = {
   admin: Object.fromEntries(CAPABILITY_KEYS.map((k) => [k, true])) as Record<Capability, boolean>,
 };
 
-function cloneDefaults(): PermissionMatrix {
-  return {
-    sales: { ...DEFAULT_MATRIX.sales },
-    member: { ...DEFAULT_MATRIX.member },
-    manager: { ...DEFAULT_MATRIX.manager },
-    admin: { ...DEFAULT_MATRIX.admin },
-  };
+// ---------------------------------------------------- leitura por pessoa
+
+/** O que a pessoa tem: a função dela e o que foi personalizado por cima. */
+export type UserPermissions = {
+  role: Role;
+  overrides: Partial<Record<Capability, boolean>>;
+};
+
+/** Padrão da função, sem personalização. */
+export function defaultFor(role: Role, capability: Capability): boolean {
+  return DEFAULT_MATRIX[role]?.[capability] ?? false;
 }
 
-// ------------------------------------------------------- leitura da matriz
+/** Leitura efetiva: o personalizado vence; na ausência, o modelo da função. */
+export function can(perms: UserPermissions, capability: Capability): boolean {
+  return perms.overrides[capability] ?? defaultFor(perms.role, capability);
+}
 
-/** Leitura pura da matriz — usada pelas checagens e pelos testes. */
-export function can(matrix: PermissionMatrix, role: Role, capability: Capability): boolean {
-  if (role === "admin") return true;
-  return matrix[role]?.[capability] ?? false;
+/** Monta as permissões de uma pessoa a partir das linhas do banco. */
+export function buildUserPermissions(
+  role: Role,
+  rows: { capability: string; allowed: boolean }[]
+): UserPermissions {
+  const overrides: Partial<Record<Capability, boolean>> = {};
+  for (const row of rows) {
+    if (isCapability(row.capability)) overrides[row.capability] = row.allowed;
+  }
+  return { role, overrides };
 }
 
 export function boardCapability(boardType: CardType): Capability {
   return boardType === "opportunity" ? "board.sales.mutate" : "board.projects.mutate";
 }
 
-export function canMutateBoardWith(
-  matrix: PermissionMatrix,
-  role: Role,
-  boardType: CardType
-): boolean {
-  return can(matrix, role, boardCapability(boardType));
+export function canMutateBoardWith(perms: UserPermissions, boardType: CardType): boolean {
+  return can(perms, boardCapability(boardType));
 }
 
 export function canEditCardWith(
-  matrix: PermissionMatrix,
-  role: Role,
+  perms: UserPermissions,
   boardType: CardType,
   card: { assigneeId: string | null },
   userId: string
 ): boolean {
-  if (card.assigneeId === userId) return can(matrix, role, "card.edit.own");
-  return can(matrix, role, "card.edit.any") && canMutateBoardWith(matrix, role, boardType);
+  if (card.assigneeId === userId) return can(perms, "card.edit.own");
+  return can(perms, "card.edit.any") && canMutateBoardWith(perms, boardType);
 }
 
-/** Aplica ao banco só o que difere do padrão — o resto continua implícito. */
-export function applyOverrides(
-  overrides: { role: Role; capability: string; allowed: boolean }[]
-): PermissionMatrix {
-  const matrix = cloneDefaults();
-  for (const row of overrides) {
-    // `admin` é ignorado de propósito: a invariante acima não é negociável.
-    if (row.role === "admin") continue;
-    if (!isCapability(row.capability)) continue;
-    matrix[row.role][row.capability] = row.allowed;
-  }
-  return matrix;
-}
+
 
 export function assertPermission(allowed: boolean, message?: string): void {
   if (!allowed) throw new PermissionError(message);

@@ -98,7 +98,7 @@ motor sabe avaliar.
   schema.
 - **Triggers como última linha de defesa.** Um trigger PL/pgSQL impede que um card com
   tarefas abertas entre numa lista *Concluído*, mesmo numa escrita que ignore a
-  aplicação (ver [5.7](#57-motor-de-compliance)).
+  aplicação (ver [5.8](#58-motor-de-compliance)).
 - **Mesmo dialeto em todo lugar.** Local em Docker, e em produção o Postgres do
   Supabase. As mesmas migrações rodam nos dois.
 
@@ -316,8 +316,7 @@ docs/                      backlog do produto (site MkDocs)
    `/cadastro`, `/api/cron`) passam direto. Nas demais, um token ausente ou inválido
    redireciona para `/login`, e uma sessão com senha temporária é presa em
    `/definir-senha`.
-5. O usuário cai em `/inicio`, que mostra um resumo com oportunidades abertas, valor em
-   negociação, projetos em execução e automações ativas.
+5. O usuário cai em `/inicio`, o **painel** (ver [5.13](#513-painel-de-vendas-e-projetos)).
 
 O seed cria um usuário por papel, todos com a senha `polimatas123`:
 `admin@`, `gestor@`, `vendas@` e `executor@polimatas.dev`.
@@ -343,52 +342,79 @@ Enquanto a pessoa não fizer o primeiro acesso, a lista de usuários mostra o se
 *aguardando primeiro acesso*. Cada cadastro fica em `permission_audit`. E-mail repetido
 é recusado.
 
-### 5.3 Papéis e permissões
+### 5.3 Funções e permissões por pessoa
 
-Existem quatro papéis: **Vendedor** (`sales`), **Executor** (`member`), **Gestor**
-(`manager`) e **Administrador** (`admin`). O que cada um pode fazer é definido por nove
-**capacidades**:
+Existem quatro funções: **Vendedor** (`sales`), **Executor** (`member`), **Gestor**
+(`manager`) e **Administrador** (`admin`). Elas **não mandam nas permissões** — servem
+de **modelo**. Quem manda é a pessoa: o admin liga e desliga cada uma das onze
+**capacidades** para cada usuário, e a tabela abaixo é o padrão de cada função:
 
 | Capacidade | Vendedor | Executor | Gestor | Admin |
 |---|:--:|:--:|:--:|:--:|
-| `board.sales.mutate` — criar/mover oportunidades | ✅ | ❌ | ✅ | ✅ fixo |
-| `board.projects.mutate` — criar/mover projetos | ❌ | ❌ | ✅ | ✅ fixo |
-| `card.edit.own` — editar card em que é responsável | ✅ | ✅ | ✅ | ✅ fixo |
-| `card.edit.any` — editar card de outra pessoa | ✅ | ✅ | ✅ | ✅ fixo |
-| `task.manage` — criar/editar/remover tarefas | ✅ | ✅ | ✅ | ✅ fixo |
-| `task.complete` — concluir tarefas | ✅ | ✅ | ✅ | ✅ fixo |
-| `automations.manage` | ❌ | ❌ | ✅ | ✅ fixo |
-| `compliance.manage` | ❌ | ❌ | ❌ | ✅ fixo |
-| `users.manage` — acesso às Configurações | ❌ | ❌ | ❌ | ✅ fixo |
+| `board.sales.mutate` — criar/mover oportunidades | ✅ | ❌ | ✅ | ✅ |
+| `board.projects.mutate` — criar/mover projetos | ❌ | ❌ | ✅ | ✅ |
+| `card.edit.own` — editar card em que é responsável | ✅ | ✅ | ✅ | ✅ |
+| `card.edit.any` — editar card de outra pessoa | ✅ | ✅ | ✅ | ✅ |
+| `card.comment` — comentar nos cards | ✅ | ✅ | ✅ | ✅ |
+| `lists.manage` — criar, renomear e excluir colunas | ❌ | ❌ | ✅ | ✅ |
+| `task.manage` — criar/editar/remover tarefas | ✅ | ✅ | ✅ | ✅ |
+| `task.complete` — concluir tarefas | ✅ | ✅ | ✅ | ✅ |
+| `automations.manage` | ❌ | ❌ | ✅ | ✅ |
+| `compliance.manage` | ❌ | ❌ | ❌ | ✅ |
+| `users.manage` — acesso às Configurações | ❌ | ❌ | ❌ | ✅ |
 
-A tabela mostra o **padrão do briefing**. O admin altera qualquer célula em
-**Configurações** (ícone de engrenagem no cabeçalho).
+A tabela mostra o **modelo de cada função**. Em **Configurações** (engrenagem no
+cabeçalho) o admin abre uma pessoa e ajusta cada capacidade individualmente.
 
 **Como a verificação funciona:**
 
-- Os valores padrão ficam no código (`DEFAULT_MATRIX`). A tabela `role_permissions`
-  guarda **só as diferenças**: linha ausente significa padrão.
-- `permission-store.ts` monta a matriz (padrão + diferenças) e a guarda em cache de
-  processo por 10 s. Toda gravação na tela de configurações invalida o cache na hora.
+- Os modelos ficam no código (`DEFAULT_MATRIX`). A tabela `user_permissions` guarda
+  **só o que foi personalizado por pessoa**: sem linha, vale o modelo da função dela.
+- `permission-store.ts` resolve `override ?? modelo da função` e guarda o resultado num
+  cache por pessoa, de 10 s. Toda gravação invalida o cache daquela pessoa na hora.
+- **A função é lida do banco**, não da sessão: trocar o papel de alguém passa a valer
+  na hora, sem esperar o próximo login.
 - As capacidades se combinam:
   - editar um card alheio exige `card.edit.any` **e** a capacidade de mexer no quadro
     daquele card;
   - mexer em tarefas exige `task.manage` **e** poder editar o card.
-- **A coluna do admin é fixa.** Se fosse editável, bastaria um clique para o admin
-  remover o próprio acesso às Configurações, sem volta pela interface.
+- **Não existe pessoa intocável.** Qualquer permissão pode ser retirada de qualquer
+  um, inclusive de quem tem papel de administrador. No lugar disso há duas travas:
+  ninguém altera as próprias permissões, e o sistema recusa tirar `users.manage` da
+  última pessoa que a tem.
 
 **Configurações (`/configuracoes`)** tem três abas:
 
 | Aba | O que faz |
 |---|---|
-| Permissões por papel | Switches por capacidade. O contorno âmbar marca o que difere do padrão; "Restaurar padrão" desfaz tudo. |
-| Usuários | Cadastra membros (ver 5.2) e troca o papel de cada pessoa. Quem tem o papel trocado recebe notificação. |
+| Pessoas e permissões | Cadastra membros (ver 5.2), troca a função, abre cada pessoa para ligar ou desligar capacidade a capacidade, e **desativa, reativa ou exclui** (ver 5.4). O selo *personalizado* marca o que difere do modelo, e há "voltar ao padrão" por capacidade e por pessoa. |
 | Histórico | Quem mudou o quê, de qual valor para qual, e quando (`permission_audit`). |
 
 Guardas no servidor: ninguém altera o **próprio** papel, o **último administrador** não
 pode ser rebaixado e toda escrita exige `users.manage`.
 
-### 5.4 Quadros, listas e cards
+### 5.4 Tirar alguém do sistema
+
+Quem sai da equipe é **desativado**, não apagado:
+
+- perde o acesso na hora — `requireSession()` confere o estado a cada página e manda
+  para `/login`; o token continua válido até expirar, então a checagem não pode
+  depender só do login;
+- não entra mais, nem com a senha certa;
+- some dos seletores de responsável, no quadro, no card, nas automações e no compliance;
+- **os cards, comentários, tarefas e o histórico continuam com o nome dela.**
+
+Reativar devolve tudo. A pessoa desativada aparece na lista com o selo *inativo*.
+
+**Excluir de vez** só aparece para quem não deixou rastro: sem card criado, sem card ou
+tarefa sob responsabilidade e sem comentário. Não é escolha de gosto — o banco exige um
+criador para cada card, e o comentário sumiria junto com o perfil, furando o histórico.
+A tentativa de excluir alguém com vínculos é recusada com 409 e a lista do que está preso.
+
+Guardas: ninguém desativa ou exclui a própria conta, e o sistema recusa tirar do ar a
+última pessoa com `users.manage`.
+
+### 5.5 Quadros, listas e cards
 
 Os dois quadros compartilham **uma única tabela `cards`**, e o campo `type`
 (`opportunity` ou `project`) distingue os dois. Com isso, os motores de automação e
@@ -405,15 +431,44 @@ quando relevante, uma **semântica** que os motores usam em vez do nome exibido:
 | `done` | Concluído | Bloqueia se houver tarefa aberta. |
 | `late` | Atrasados | Destino das automações de atraso. |
 
+**As colunas são personalizáveis** por quem tem `lists.manage`, no botão *Personalizar
+colunas* do quadro: criar, renomear, escolher a cor numa paleta de 8 tons, reordenar e
+excluir. Três travas sustentam o resto do sistema:
+
+- **`stage_key` não muda no rename.** O nome é só exibição; a chave é a identidade da
+  coluna para automações e compliance, e é gerada uma vez na criação (a partir do nome,
+  sem acento nem espaço, com sufixo numérico se repetir).
+- **Coluna com semântica não é excluída.** *Fechado*, *Perdido*, *Concluído* e
+  *Atrasados* podem ser renomeadas e recoloridas, nunca apagadas.
+- **Excluir exige destino.** Havendo cards, o sistema pede para qual coluna movê-los;
+  nenhum card é apagado junto. A movimentação é estrutural e não dispara automações de
+  "card mudou de lista", que seriam ruído.
+
 **A ordem dos cards** usa `position` fracionário. Ao soltar um card entre dois
 vizinhos, a nova posição é a média das posições deles. **Mover um card grava uma única
 linha**, sem reindexar a lista inteira.
 
 **O card aberto** (`/board/[key]/card/[id]`) mostra dados do cliente, valor,
-responsável, prazo, **checklist** de tarefas e **histórico** completo. Cards ligados
-por venda → projeto exibem o link para a origem e para o destino.
+responsável, prazo, **checklist** de tarefas e **comentários**. Cards ligados por
+venda → projeto exibem o link para a origem e para o destino.
 
-### 5.5 Arrastar um card, passo a passo
+Tudo no card é editável no lugar: clicar no título, no valor ou na descrição já salva ao
+sair do campo. O **Status** é um seletor na lateral, que move o card sem precisar
+arrastar — e passa pelo mesmo compliance do arrastar, inclusive pedindo o motivo antes
+de mandar para *Perdido* e confirmando antes de *Fechado*.
+
+**Comentários** ficam na tabela `comments`, fora do `activity_log`: o log é trilha
+imutável, e o comentário pode ser corrigido. Cada pessoa edita e apaga os próprios, o
+admin apaga qualquer um para moderar, a edição fica marcada como *editado*, e criar,
+editar e remover deixam rastro em `activity_log`. Quem comenta é controlado pela
+capacidade `card.comment`.
+
+**Criar card** acontece no rodapé de cada lista, com título e cliente. O botão *Mais
+campos* revela responsável, prazo, valor e descrição, para o card já nascer completo.
+Listas terminais (*Fechado*, *Perdido*, *Concluído*) não recebem card novo: o card chega
+nelas sendo movido, o que preserva o fluxo do funil.
+
+### 5.6 Arrastar um card, passo a passo
 
 O drag and drop aplica o bloqueio em **três camadas**:
 
@@ -463,7 +518,7 @@ sequenceDiagram
 3. **Banco:** o trigger `trg_forbid_done_with_open_tasks` impede que um card com
    tarefas abertas entre numa lista `done`, mesmo numa escrita SQL direta.
 
-### 5.6 A camada de domínio: o roteiro de toda mutação
+### 5.7 A camada de domínio: o roteiro de toda mutação
 
 Toda função de `domain.ts` (`createCard`, `updateCard`, `moveCard`, `createTask`,
 `updateTask`, `toggleTask`, `deleteTask`) segue a mesma ordem:
@@ -483,7 +538,7 @@ alterado), `task.created` e `task.completed`.
 `src/app/actions/result.ts` converte os erros de domínio em respostas com mensagem de
 negócio, e a interface mostra essa mensagem num toast.
 
-### 5.7 Motor de compliance
+### 5.8 Motor de compliance
 
 **O que é:** regras que o sistema **impõe**, e não apenas sugere. Cada regra tem
 escopo, condição, mensagem e severidade (`block` impede a ação; `warn` registra e
@@ -515,7 +570,7 @@ e operadores das automações.
 **Prova viva:** cada bloqueio vira uma linha em `compliance_violations`, e a tela
 `/compliance` lista o que foi impedido, para quem e quando.
 
-### 5.8 Motor de automações
+### 5.9 Motor de automações
 
 **Estrutura de uma regra:** **Gatilho → Condições (E/OU) → Ações**, montada em telas,
 sem digitar JSON.
@@ -575,7 +630,7 @@ abertas, lista de origem/destino e dados da tarefa. **O mesmo avaliador
   **simulação** e descreve em português o que *faria*, sem gravar nada.
 - **Automações nativas** não podem ser excluídas; o botão aparece desabilitado.
 
-### 5.9 O fluxo central: venda fechada vira projeto
+### 5.10 O fluxo central: venda fechada vira projeto
 
 É uma **automação nativa**, e não um `if` escondido no código. Isso demonstra o motor
 funcionando e deixa a regra ajustável.
@@ -608,7 +663,7 @@ flowchart LR
    herdando os dados. A criação também passa pelo domínio e pelo compliance.
 6. Um comentário na venda aponta para o projeto, e o responsável recebe notificação.
 
-### 5.10 Gatilhos temporais (cron)
+### 5.11 Gatilhos temporais (cron)
 
 Eventos como *prazo passou* não nascem de uma ação do usuário, então alguém precisa
 procurá-los.
@@ -628,7 +683,7 @@ procurá-los.
 uma tarefa passa e o card não está em *Concluído*, a automação move o card para
 *Atrasados* e notifica o responsável.
 
-### 5.11 Notificações
+### 5.12 Notificações
 
 - São criadas pela ação `notify_user` das automações e pela troca de papel nas
   Configurações.
@@ -637,11 +692,43 @@ uma tarefa passa e o card não está em *Concluído*, a automação move o card 
 - Clicar num aviso abre o card relacionado e o marca como lido. Há também *Marcar todas
   como lidas*.
 
-### 5.12 Auditoria
+### 5.13 Painel de vendas e projetos
+
+`/inicio` é a primeira tela depois do login e também o item **Visão geral** do menu.
+Aberto a todos os papéis, porque é leitura.
+
+| Bloco | O que mostra |
+|---|---|
+| Números do topo | Em negociação · Fechado no mês · Taxa de conversão · Ticket médio |
+| Funil de vendas | Barras com o valor parado em cada etapa; o total de oportunidades aparece ao passar o mouse |
+| Fechado por mês | Área com os últimos 6 meses de vendas ganhas |
+| Ganhas e perdidas | Barra empilhada com o desfecho das oportunidades encerradas |
+| Tarefas do time | Concluídas × abertas |
+| Projetos | Em execução · Concluídos · Atrasados · Vencem em 7 dias |
+| Projetos por etapa | Barras por coluna do quadro |
+| Situação dos prazos | No prazo · Vencem em 7 dias · Atrasados · Sem prazo |
+| Carga por responsável | Projetos em execução por pessoa |
+
+**Os gráficos são SVG escrito à mão**, sem biblioteca de charts: são formas simples
+(barra, área, barra empilhada) e uma dependência a mais custaria peso no pacote sem
+resolver nada que o SVG não resolva.
+
+Decisões de leitura, seguindo o guia de visualização de dados:
+
+- **A paleta foi validada por script** contra a superfície escura — faixa de
+  luminosidade, croma e contraste ≥ 3:1. Séries únicas usam um tom só (ciano
+  `#0891b2`); status usa verde `#059669`, âmbar `#d97706` e vermelho `#e11d48`.
+- **Cor nunca aparece sozinha.** Todo segmento de status traz rótulo e valor ao lado.
+- **Um eixo por gráfico.** Valor e contagem nunca dividem a mesma escala: o funil
+  desenha valor e informa a contagem no tooltip.
+- **Cada gráfico tem a tabela equivalente** atrás de "Ver os números", para leitor de
+  tela e para quem precisa do número exato.
+
+### 5.14 Auditoria
 
 | Tabela | Registra | Onde aparece |
 |---|---|---|
-| `activity_log` | Toda mutação de card e tarefa, com antes/depois, autor e automação de origem | Histórico do card |
+| `activity_log` | Toda mutação de card e tarefa, mais criação, edição e remoção de comentário, com antes/depois, autor e automação de origem | Sem tela própria — consultado no banco |
 | `automation_runs` | Cada execução de automação, com o resultado de cada ação | Automações → Histórico de execuções |
 | `compliance_violations` | Cada tentativa bloqueada ou avisada: regra, card, autor e ação tentada | Compliance |
 | `permission_audit` | Cada mudança de permissão, de papel e cada cadastro de membro | Configurações → Histórico |
@@ -672,18 +759,19 @@ erDiagram
 
 | Tabela | Campos principais |
 |---|---|
-| `profiles` | `id`, `name`, `email` (único), `role`, `password_hash`, `must_change_password` |
+| `profiles` | `id`, `name`, `email` (único), `role`, `password_hash`, `must_change_password`, `deactivated_at` |
 | `boards` | `id`, `key` (`sales` \| `projects`), `name`, `type` |
-| `lists` | `id`, `board_id`, `name`, `stage_key`, `position`, `is_terminal`, `semantics` |
+| `lists` | `id`, `board_id`, `name`, `stage_key`, `position`, `is_terminal`, `semantics`, `color` |
 | `cards` | `id`, `board_id`, `list_id`, `type`, `title`, `description`, `position` (float), `assignee_id`, `due_date`, `client_name`, `client_email`, `client_phone`, `amount`, `loss_reason`, `source_card_id` (**único**), `created_by`, `archived_at` |
 | `tasks` | `id`, `card_id`, `title`, `done`, `due_date` (**NOT NULL**), `assignee_id`, `position`, `completed_at` |
 | `automations` | `id`, `name`, `enabled`, `is_system`, `trigger` / `conditions` / `actions` (**JSONB**) |
 | `automation_runs` | `id`, `automation_id`, `card_id`, `status`, `event_key`, `payload`, `error` — único em `(automation_id, card_id, event_key)` |
 | `compliance_rules` | `id`, `key`, `name`, `scope`, `condition` (JSONB), `message`, `severity`, `enabled`, `is_system` |
 | `compliance_violations` | `id`, `rule_id`, `card_id`, `actor_id`, `attempted_action` (JSONB) |
+| `comments` | `id`, `card_id`, `author_id`, `text`, `created_at`, `edited_at` |
 | `notifications` | `id`, `user_id`, `card_id`, `message`, `read_at` |
 | `activity_log` | `id`, `card_id`, `actor_id`, `action`, `before` / `after` (JSONB) |
-| `role_permissions` | `role`, `capability`, `allowed` — único em `(role, capability)` |
+| `user_permissions` | `user_id`, `capability`, `allowed` — único em `(user_id, capability)` |
 | `permission_audit` | `actor_id`, `kind`, `target`, `before`, `after` |
 
 **Garantias no próprio banco:** `tasks.due_date NOT NULL`, `cards.source_card_id UNIQUE`
@@ -693,12 +781,15 @@ e o trigger `trg_forbid_done_with_open_tasks`.
 
 ## 7. Qualidade e testes
 
-`npm test` roda **23 testes** contra o Postgres real (exigem banco migrado e seed):
+`npm test` roda **41 testes** contra o Postgres real (exigem banco migrado e seed):
 
 | Arquivo | O que prova |
 |---|---|
 | `tests/conditions.test.ts` | Operadores básicos · combinação E/OU · grupo vazio sempre passa · modelos `{{campo}}` |
 | `tests/motores.test.ts` | Tarefa sem deadline é recusada e **não existe no banco** · projeto com tarefa aberta não entra em Concluído · **o trigger bloqueia escrita SQL direta** · Perdido exige motivo · **venda fechada cria o projeto herdando os dados** · sair e voltar para Fechado **não duplica** · automação bloqueada vira `blocked_by_compliance` · matriz de papéis |
+| `tests/colunas.test.ts` | Chave derivada do nome sem acento · rename preserva a chave · nome repetido ganha sufixo · coluna com função no fluxo não é excluída · excluir exige destino e os cards são movidos, não apagados · `lists.manage` barra e libera |
+| `tests/comentarios.test.ts` | Qualquer papel comenta por padrão · texto vazio recusado · só o autor edita · o admin remove o de outra pessoa e um par não · o admin pode desligar `card.comment` |
+| `tests/desativar-usuario.test.ts` | Ativa segue o modelo da função · desativada perde todas as capacidades · não entra nem com a senha certa · reativar devolve o acesso · o banco impede apagar quem criou card |
 | `tests/cadastro-membro.test.ts` | Senha temporária legível e sem caracteres ambíguos · conta criada com o papel escolhido e a trava de troca · só o hash é gravado · e-mail repetido é recusado |
 | `tests/permissoes.test.ts` | Padrão do briefing · override substitui o padrão · admin nunca perde capacidade · capacidade desconhecida é ignorada · ligar uma capacidade libera a ação no domínio · desligar `task.complete` recusa concluir tarefa |
 
@@ -752,7 +843,6 @@ curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/tick
 
 | Limitação | Impacto | Caminho de evolução |
 |---|---|---|
-| **O papel fica gravado no JWT.** A sessão não relê o papel no banco. | Quando o admin troca o papel de alguém, a mudança só vale para essa pessoa **no próximo login**, que pode levar até 7 dias. A matriz de permissões, por outro lado, vale na hora. | Reler o papel do perfil em `getSession()`, ou invalidar as sessões ao trocar o papel. |
 | **Sem tempo real.** | Outro usuário só vê o card movido ao recarregar. O sino tem atraso de até 10 s. | Supabase Realtime ou Server-Sent Events. |
 | **O cron só existe na Vercel.** | Localmente, as automações temporais não disparam sozinhas. | Chamar o endpoint manualmente (seção 8) ou agendar com `cron` do sistema. |
 | **Não há rebalanceamento de `position`.** | Após milhares de reordenações no mesmo ponto, a precisão do float pode se esgotar. | Um job que redistribui as posições quando o intervalo fica pequeno. |

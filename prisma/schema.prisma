@@ -53,6 +53,9 @@ model Profile {
   passwordHash String   @map("password_hash")
   /// Conta criada pelo admin com senha temporária: troca obrigatória no primeiro login.
   mustChangePassword Boolean @default(false) @map("must_change_password")
+  /// Pessoa desativada: perde o acesso e some dos seletores, mas o que ela fez
+  /// continua no histórico com o nome dela.
+  deactivatedAt DateTime? @map("deactivated_at")
   createdAt    DateTime @default(now()) @map("created_at")
 
   assignedCards Card[]         @relation("CardAssignee")
@@ -60,8 +63,10 @@ model Profile {
   assignedTasks Task[]
   notifications Notification[]
   activities    ActivityLog[]
+  comments      Comment[]
   violations    ComplianceViolation[]
   permissionAudits PermissionAudit[]
+  permissions      UserPermission[]
 
   @@map("profiles")
 }
@@ -87,6 +92,8 @@ model List {
   position   Int
   isTerminal Boolean        @default(false) @map("is_terminal")
   semantics  ListSemantics?
+  /// Cor da coluna no quadro — chave da paleta em src/lib/colors.ts.
+  color      String?
 
   board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
   cards Card[]
@@ -125,6 +132,7 @@ model Card {
 
   tasks      Task[]
   activities ActivityLog[]
+  comments   Comment[]
   runs       AutomationRun[]
   violations ComplianceViolation[]
   notifications Notification[]
@@ -249,19 +257,20 @@ model ActivityLog {
   @@map("activity_log")
 }
 
-/// Matriz de permissões editável pelo admin (seção 3.1 do backlog).
-/// Guarda apenas o que difere do padrão de código — linha ausente = padrão.
-/// O papel `admin` nunca é gravado aqui: mantém todas as capacidades sempre.
-model RolePermission {
+/// Permissões por PESSOA. Guarda apenas o que o admin personalizou; sem linha,
+/// vale o modelo da função (DEFAULT_MATRIX em src/core/permissions.ts).
+model UserPermission {
   id          String   @id @default(uuid())
-  role        Role
+  userId      String   @map("user_id")
   capability  String
   allowed     Boolean
   updatedAt   DateTime @updatedAt @map("updated_at")
   updatedById String?  @map("updated_by")
 
-  @@unique([role, capability])
-  @@map("role_permissions")
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, capability])
+  @@map("user_permissions")
 }
 
 /// Trilha de auditoria das mudanças de permissão e de papel de usuário.
@@ -278,4 +287,22 @@ model PermissionAudit {
 
   @@index([createdAt])
   @@map("permission_audit")
+}
+
+/// Comentário escrito por uma pessoa no card. Fica fora de `activity_log`
+/// de propósito: o log é trilha de auditoria imutável, e o comentário pode
+/// ser editado e removido pelo autor.
+model Comment {
+  id        String    @id @default(uuid())
+  cardId    String    @map("card_id")
+  authorId  String    @map("author_id")
+  text      String
+  createdAt DateTime  @default(now()) @map("created_at")
+  editedAt  DateTime? @map("edited_at")
+
+  card   Card    @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  author Profile @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([cardId, createdAt])
+  @@map("comments")
 }

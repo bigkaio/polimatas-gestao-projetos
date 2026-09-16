@@ -11,7 +11,7 @@ import { toResult, type ActionResult } from "./result";
 
 async function requireManager() {
   const session = await requireSession();
-  if (!(await canManageAutomations(session.role))) {
+  if (!(await canManageAutomations(session.userId))) {
     return null;
   }
   return session;

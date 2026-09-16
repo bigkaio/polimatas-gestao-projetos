@@ -25,6 +25,7 @@ export type ListDTO = {
   stageKey: string;
   isTerminal: boolean;
   semantics: "won" | "lost" | "done" | "late" | null;
+  color: string | null;
 };
 
 export type BoardDTO = {

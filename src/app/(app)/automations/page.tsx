@@ -15,7 +15,11 @@ export default async function Page() {
       include: { _count: { select: { runs: true } } },
     }),
     prisma.list.findMany({ include: { board: { select: { key: true } } } }),
-    prisma.profile.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.profile.findMany({
+      where: { deactivatedAt: null },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
     prisma.card.findMany({
       where: { archivedAt: null },
       orderBy: { updatedAt: "desc" },
@@ -45,7 +49,7 @@ export default async function Page() {
       lists={listRefs}
       users={users}
       cards={cards}
-      canManage={await canManageAutomations(session.role)}
+      canManage={await canManageAutomations(session.userId)}
     />
   );
 }

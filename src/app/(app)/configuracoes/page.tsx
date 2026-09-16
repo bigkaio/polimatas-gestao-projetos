@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
-import { CAPABILITIES, DEFAULT_MATRIX, EDITABLE_ROLES } from "@/core/permissions";
-import { canManageUsers, loadPermissionMatrix } from "@/core/permission-store";
+import { CAPABILITIES, DEFAULT_MATRIX, buildUserPermissions, can } from "@/core/permissions";
+import { canManageUsers } from "@/core/permission-store";
 import { SettingsPage } from "@/components/settings/settings-page";
 
 export const dynamic = "force-dynamic";
@@ -10,12 +10,21 @@ export const dynamic = "force-dynamic";
 /** Configurações do administrador (seção 3.1: "gerenciar usuários"). */
 export default async function Page() {
   const session = await requireSession();
-  if (!(await canManageUsers(session.role))) redirect("/inicio");
+  if (!(await canManageUsers(session.userId))) redirect("/inicio");
 
-  const [matrix, users, audits] = await Promise.all([
-    loadPermissionMatrix(),
+  const [users, audits] = await Promise.all([
     prisma.profile.findMany({
-      select: { id: true, name: true, email: true, role: true, createdAt: true, mustChangePassword: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        mustChangePassword: true,
+        deactivatedAt: true,
+        permissions: { select: { capability: true, allowed: true } },
+        _count: { select: { createdCards: true, assignedCards: true, comments: true, assignedTasks: true } },
+      },
       orderBy: [{ role: "asc" }, { name: "asc" }],
     }),
     prisma.permissionAudit.findMany({
@@ -28,17 +37,31 @@ export default async function Page() {
   return (
     <SettingsPage
       capabilities={CAPABILITIES.map((c) => ({ ...c }))}
-      roles={[...EDITABLE_ROLES]}
-      matrix={matrix}
       defaults={DEFAULT_MATRIX}
-      users={users.map((u) => ({
-        id: u.id,
-        name: u.name,
-        email: u.email,
-        role: u.role,
-        createdAt: u.createdAt.toISOString(),
-        mustChangePassword: u.mustChangePassword,
-      }))}
+      users={users.map((u) => {
+        const perms = buildUserPermissions(u.role, u.permissions);
+        return {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          createdAt: u.createdAt.toISOString(),
+          mustChangePassword: u.mustChangePassword,
+          active: u.deactivatedAt === null,
+          // só some de vez quem não deixou rastro: card exige criador, e
+          // comentário sumiria junto com o perfil
+          erasable:
+            u._count.createdCards === 0 &&
+            u._count.assignedCards === 0 &&
+            u._count.comments === 0 &&
+            u._count.assignedTasks === 0,
+          // valor que vale hoje + de onde ele veio, para a tela marcar o que foi personalizado
+          effective: Object.fromEntries(
+            CAPABILITIES.map((c) => [c.key, can(perms, c.key)])
+          ) as Record<string, boolean>,
+          customized: Object.keys(perms.overrides),
+        };
+      })}
       audits={audits.map((a) => ({
         id: a.id,
         actorName: a.actor?.name ?? "—",

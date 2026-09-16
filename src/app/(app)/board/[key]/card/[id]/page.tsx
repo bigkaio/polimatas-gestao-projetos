@@ -2,13 +2,20 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
-import { CardDetail, type ActivityDTO, type CardFullDTO, type TaskDTO } from "@/components/card/card-detail";
+import { canComment, canMutateBoard } from "@/core/permission-store";
+import {
+  CardDetail,
+  type CardFullDTO,
+  type CommentDTO,
+  type ListOptionDTO,
+  type TaskDTO,
+} from "@/components/card/card-detail";
 
 export const dynamic = "force-dynamic";
 
 /** Detalhe do card com URL própria para compartilhar (US-09). */
 export default async function CardPage({ params }: { params: { key: string; id: string } }) {
-  await requireSession();
+  const session = await requireSession();
 
   const card = await prisma.card.findUnique({
     where: { id: params.id },
@@ -19,23 +26,29 @@ export default async function CardPage({ params }: { params: { key: string; id: 
       tasks: { orderBy: { position: "asc" }, include: { assignee: { select: { id: true, name: true } } } },
       sourceCard: { select: { id: true, title: true, board: { select: { key: true } } } },
       spawned: { select: { id: true, title: true, board: { select: { key: true } } } },
-      activities: {
-        orderBy: { createdAt: "desc" },
-        take: 40,
-        include: { actor: { select: { name: true } } },
+      comments: {
+        orderBy: { createdAt: "asc" },
+        include: { author: { select: { id: true, name: true } } },
       },
     },
   });
   if (!card || card.board.key !== params.key) notFound();
 
-  const users = await prisma.profile.findMany({
-    select: { id: true, name: true },
-    orderBy: { name: "asc" },
-  });
+  const [users, lists, canMove, mayComment] = await Promise.all([
+    prisma.profile.findMany({
+      where: { deactivatedAt: null },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.list.findMany({ where: { boardId: card.boardId }, orderBy: { position: "asc" } }),
+    canMutateBoard(session.userId, card.type),
+    canComment(session.userId),
+  ]);
 
   const dto: CardFullDTO = {
     id: card.id,
     boardKey: card.board.key,
+    listId: card.listId,
     listName: card.list.name,
     type: card.type,
     title: card.title,
@@ -63,16 +76,20 @@ export default async function CardPage({ params }: { params: { key: string; id: 
     assignee: t.assignee,
   }));
 
-  const activities: ActivityDTO[] = card.activities.map((a) => ({
-    id: a.id,
-    action: a.action,
-    actorName: a.actor?.name ?? null,
-    automationName:
-      a.after && typeof a.after === "object" && "automation" in (a.after as object)
-        ? String((a.after as Record<string, unknown>).automation)
-        : null,
-    detail: a.after ? JSON.stringify(a.after) : null,
-    createdAt: a.createdAt.toISOString(),
+  const comments: CommentDTO[] = card.comments.map((c) => ({
+    id: c.id,
+    text: c.text,
+    authorId: c.author.id,
+    authorName: c.author.name,
+    createdAt: c.createdAt.toISOString(),
+    editedAt: c.editedAt ? c.editedAt.toISOString() : null,
+  }));
+
+  const listOptions: ListOptionDTO[] = lists.map((l) => ({
+    id: l.id,
+    name: l.name,
+    stageKey: l.stageKey,
+    semantics: l.semantics,
   }));
 
   return (
@@ -82,7 +99,16 @@ export default async function CardPage({ params }: { params: { key: string; id: 
         aria-label="Voltar ao quadro"
         className="fixed inset-0 -z-10 cursor-default"
       />
-      <CardDetail card={dto} tasks={tasks} activities={activities} users={users} />
+      <CardDetail
+        card={dto}
+        tasks={tasks}
+        comments={comments}
+        users={users}
+        lists={listOptions}
+        currentUser={{ id: session.userId, isAdmin: session.role === "admin" }}
+        canMove={canMove}
+        canComment={mayComment}
+      />
     </div>
   );
 }

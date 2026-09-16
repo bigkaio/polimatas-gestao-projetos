@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
-import { updateCardAction } from "@/app/actions/cards";
+import { moveCardAction, updateCardAction } from "@/app/actions/cards";
 import {
   createTaskAction,
   deleteTaskAction,
@@ -13,11 +13,22 @@ import {
   updateTaskAction,
 } from "@/app/actions/tasks";
 import { useToast } from "@/components/toast";
-import { brl, dateBR, dueStatus, relativeTime } from "@/lib/format";
+import { brl, dateBR, dueStatus } from "@/lib/format";
+import { Comments, type CommentDTO } from "./comments";
+
+export type { CommentDTO };
+
+export type ListOptionDTO = {
+  id: string;
+  name: string;
+  stageKey: string;
+  semantics: "won" | "lost" | "done" | "late" | null;
+};
 
 export type CardFullDTO = {
   id: string;
   boardKey: string;
+  listId: string;
   listName: string;
   type: "opportunity" | "project";
   title: string;
@@ -41,37 +52,24 @@ export type TaskDTO = {
   assignee: { id: string; name: string } | null;
 };
 
-export type ActivityDTO = {
-  id: string;
-  action: string;
-  actorName: string | null;
-  automationName: string | null;
-  detail: string | null;
-  createdAt: string;
-};
-
-const ACTION_LABEL: Record<string, string> = {
-  "card.created": "criou o card",
-  "card.moved": "moveu o card",
-  "card.updated": "atualizou o card",
-  "task.created": "adicionou uma tarefa",
-  "task.completed": "concluiu uma tarefa",
-  "task.reopened": "reabriu uma tarefa",
-  "task.updated": "editou uma tarefa",
-  "task.deleted": "removeu uma tarefa",
-  comment: "comentou",
-};
-
 export function CardDetail({
   card,
   tasks,
-  activities,
+  comments,
   users,
+  lists,
+  currentUser,
+  canMove,
+  canComment,
 }: {
   card: CardFullDTO;
   tasks: TaskDTO[];
-  activities: ActivityDTO[];
+  comments: CommentDTO[];
   users: { id: string; name: string }[];
+  lists: ListOptionDTO[];
+  currentUser: { id: string; isAdmin: boolean };
+  canMove: boolean;
+  canComment: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -89,6 +87,37 @@ export function CardDetail({
     toast(successMsg, "success");
     startTransition(() => router.refresh());
     return true;
+  };
+
+  /**
+   * Troca de lista pelo card (US-08 pelo caminho do detalhe). O compliance
+   * continua valendo: mover para Perdido sem motivo, por exemplo, é recusado
+   * no servidor — por isso pedimos o motivo antes de tentar.
+   */
+  const changeList = async (toListId: string) => {
+    const target = lists.find((l) => l.id === toListId);
+    if (!target || toListId === card.listId) return;
+
+    let lossReason: string | undefined;
+    if (target.semantics === "lost" && !card.lossReason) {
+      const answer = window.prompt("Qual o motivo da perda?")?.trim();
+      if (!answer) return;
+      lossReason = answer;
+    }
+    if (target.semantics === "won") {
+      const ok = window.confirm(
+        `Fechar a venda "${card.title}"? O sistema cria automaticamente o card no Backlog do Pipeline de Projetos.`,
+      );
+      if (!ok) return;
+    }
+
+    const result = await moveCardAction({ cardId: card.id, toListId, index: 0, lossReason });
+    if (!result.ok) {
+      toast(result.error, "error");
+      return;
+    }
+    toast(`Card movido para ${target.name}.`, "success");
+    startTransition(() => router.refresh());
   };
 
   const addTask = async () => {
@@ -151,8 +180,8 @@ export function CardDetail({
         </Link>
       </div>
 
-      <div className="grid gap-6 p-6 md:grid-cols-[1fr_240px]">
-        <div className="space-y-6">
+      <div className="grid gap-6 p-6 md:grid-cols-[minmax(0,1fr)_240px]">
+        <div className="min-w-0 space-y-6">
           {/* Rastreabilidade venda ⇄ projeto (US-22) */}
           {card.source ? (
             <Link
@@ -211,7 +240,11 @@ export function CardDetail({
               <label className="text-xs font-medium text-gray-400">
                 Valor {isOpp ? "estimado" : "do contrato"} (R$)
                 <input
-                  defaultValue={card.amount ? Number(card.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : ""}
+                  defaultValue={
+                    card.amount
+                      ? Number(card.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })
+                      : ""
+                  }
                   placeholder="12.500,00"
                   onBlur={(e) => {
                     void save({ amount: e.target.value || null });
@@ -266,82 +299,110 @@ export function CardDetail({
               {tasks.map((task, i) => {
                 const status = dueStatus(task.dueDate, task.done);
                 return (
-                  <li key={task.id} className="group flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2">
-                    <input
-                      type="checkbox"
-                      checked={task.done}
-                      aria-label={`Concluir ${task.title}`}
-                      onChange={async (e) => {
-                        const result = await toggleTaskAction({ taskId: task.id, done: e.target.checked });
-                        if (!result.ok) toast(result.error, "error");
-                        startTransition(() => router.refresh());
-                      }}
-                      className="h-4 w-4 accent-emerald-600"
-                    />
-                    <input
-                      defaultValue={task.title}
-                      onBlur={async (e) => {
-                        if (e.target.value !== task.title && e.target.value.trim()) {
-                          const r = await updateTaskAction({ taskId: task.id, title: e.target.value });
-                          if (!r.ok) toast(r.error, "error");
-                        }
-                      }}
-                      className={clsx(
-                        "min-w-0 flex-1 rounded border border-transparent px-1 text-sm focus:border-cyan-400 focus:outline-none",
-                        task.done && "text-gray-500 line-through"
-                      )}
-                    />
-                    <input
-                      type="date"
-                      defaultValue={task.dueDate}
-                      aria-label="Prazo da tarefa"
-                      onChange={async (e) => {
-                        if (!e.target.value) return;
-                        const r = await updateTaskAction({ taskId: task.id, dueDate: e.target.value });
-                        if (!r.ok) toast(r.error, "error");
-                        startTransition(() => router.refresh());
-                      }}
-                      className={clsx(
-                        "rounded border border-white/10 px-1 py-0.5 text-xs",
-                        status === "late" && "border-red-400/40 text-red-400",
-                        status === "soon" && "border-amber-400/40 text-amber-300"
-                      )}
-                    />
-                    <select
-                      defaultValue={task.assignee?.id ?? ""}
-                      aria-label="Responsável da tarefa"
-                      onChange={async (e) => {
-                        const r = await updateTaskAction({
-                          taskId: task.id,
-                          assigneeId: e.target.value || null,
-                        });
-                        if (!r.ok) toast(r.error, "error");
-                      }}
-                      className="w-24 truncate rounded border border-white/10 px-1 py-0.5 text-xs"
-                    >
-                      <option value="">Ninguém</option>
-                      {users.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name.split(" ")[0]}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="flex opacity-0 transition group-hover:opacity-100">
-                      <button type="button" aria-label="Subir" onClick={() => void moveTask(i, -1)} className="px-1 text-gray-500 hover:text-gray-200">↑</button>
-                      <button type="button" aria-label="Descer" onClick={() => void moveTask(i, 1)} className="px-1 text-gray-500 hover:text-gray-200">↓</button>
-                      <button
-                        type="button"
-                        aria-label="Remover tarefa"
-                        onClick={async () => {
-                          const r = await deleteTaskAction({ taskId: task.id });
+                  <li key={task.id} className="group rounded-lg border border-white/10 px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={task.done}
+                        aria-label={`Concluir ${task.title}`}
+                        onChange={async (e) => {
+                          const result = await toggleTaskAction({
+                            taskId: task.id,
+                            done: e.target.checked,
+                          });
+                          if (!result.ok) toast(result.error, "error");
+                          startTransition(() => router.refresh());
+                        }}
+                        className="h-4 w-4 accent-emerald-600"
+                      />
+                      <input
+                        defaultValue={task.title}
+                        onBlur={async (e) => {
+                          if (e.target.value !== task.title && e.target.value.trim()) {
+                            const r = await updateTaskAction({
+                              taskId: task.id,
+                              title: e.target.value,
+                            });
+                            if (!r.ok) toast(r.error, "error");
+                          }
+                        }}
+                        className={clsx(
+                          "min-w-0 flex-1 rounded border border-transparent px-1 py-0.5 text-sm hover:border-white/10 focus:border-cyan-400 focus:outline-none",
+                          task.done && "text-gray-500 line-through",
+                        )}
+                      />
+                      <span className="flex shrink-0 opacity-0 transition group-focus-within:opacity-100 group-hover:opacity-100">
+                        <button
+                          type="button"
+                          aria-label="Subir"
+                          onClick={() => void moveTask(i, -1)}
+                          className="px-1 text-gray-500 hover:text-gray-200"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Descer"
+                          onClick={() => void moveTask(i, 1)}
+                          className="px-1 text-gray-500 hover:text-gray-200"
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Remover tarefa"
+                          onClick={async () => {
+                            const r = await deleteTaskAction({ taskId: task.id });
+                            if (!r.ok) toast(r.error, "error");
+                            startTransition(() => router.refresh());
+                          }}
+                          className="px-1 text-gray-500 hover:text-red-400"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    </div>
+
+                    <div className="mt-1 flex flex-wrap items-center gap-2 pl-6">
+                      <input
+                        type="date"
+                        defaultValue={task.dueDate}
+                        aria-label="Prazo da tarefa"
+                        onChange={async (e) => {
+                          if (!e.target.value) return;
+                          const r = await updateTaskAction({
+                            taskId: task.id,
+                            dueDate: e.target.value,
+                          });
                           if (!r.ok) toast(r.error, "error");
                           startTransition(() => router.refresh());
                         }}
-                        className="px-1 text-gray-500 hover:text-red-400"
+                        className={clsx(
+                          "shrink-0 rounded border border-white/10 px-1.5 py-1 text-xs",
+                          status === "late" && "border-red-400/40 text-red-400",
+                          status === "soon" && "border-amber-400/40 text-amber-300",
+                        )}
+                      />
+                      <select
+                        defaultValue={task.assignee?.id ?? ""}
+                        aria-label="Responsável da tarefa"
+                        onChange={async (e) => {
+                          const r = await updateTaskAction({
+                            taskId: task.id,
+                            assigneeId: e.target.value || null,
+                          });
+                          if (!r.ok) toast(r.error, "error");
+                        }}
+                        className="min-w-0 max-w-[10rem] flex-1 truncate rounded border border-white/10 px-1.5 py-1 text-xs"
                       >
-                        ✕
-                      </button>
-                    </span>
+                        <option value="">Ninguém</option>
+                        {users.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name.split(" ")[0]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </li>
                 );
               })}
@@ -369,7 +430,7 @@ export function CardDetail({
                     "mt-1 w-full rounded-md border px-2 py-1.5 text-sm text-white focus:outline-none",
                     highlightDue
                       ? "border-red-400 ring-2 ring-red-500/30"
-                      : "border-white/15 focus:border-cyan-400"
+                      : "border-white/15 focus:border-cyan-400",
                   )}
                 />
               </label>
@@ -378,7 +439,7 @@ export function CardDetail({
                 <select
                   value={newTask.assigneeId}
                   onChange={(e) => setNewTask((t) => ({ ...t, assigneeId: e.target.value }))}
-                  className="mt-1 w-full rounded-md border border-white/15 px-2 py-1.5 text-sm text-white"
+                  className="mt-1 w-full min-w-0 max-w-full truncate rounded-md border border-white/15 px-2 py-1.5 text-sm text-white"
                 >
                   <option value="">Ninguém</option>
                   {users.map((u) => (
@@ -398,43 +459,38 @@ export function CardDetail({
             </div>
           </section>
 
-          {/* Histórico (US-10) */}
-          <section>
-            <h3 className="text-sm font-semibold text-gray-200">Histórico</h3>
-            <ul className="mt-2 space-y-2">
-              {activities.length === 0 ? (
-                <li className="text-sm text-gray-500">Nenhuma atividade registrada ainda.</li>
-              ) : (
-                activities.map((a) => (
-                  <li key={a.id} className="flex gap-2 text-sm">
-                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-white/20" />
-                    <div>
-                      <p className="text-gray-200">
-                        <strong>
-                          {a.automationName ? `Automação: ${a.automationName}` : (a.actorName ?? "Sistema")}
-                        </strong>{" "}
-                        {ACTION_LABEL[a.action] ?? a.action}
-                        <span className="ml-2 text-xs text-gray-500">{relativeTime(a.createdAt)}</span>
-                      </p>
-                      {a.detail && a.action !== "card.updated" ? (
-                        <p className="break-all text-xs text-gray-500">{a.detail}</p>
-                      ) : null}
-                    </div>
-                  </li>
-                ))
-              )}
-            </ul>
-          </section>
+          <Comments
+            cardId={card.id}
+            comments={comments}
+            currentUser={currentUser}
+            canComment={canComment}
+          />
         </div>
 
         {/* Coluna lateral */}
-        <aside className="space-y-4">
+        <aside className="min-w-0 space-y-4">
+          <label className="block text-xs font-medium text-gray-400">
+            Status
+            <select
+              value={card.listId}
+              disabled={!canMove}
+              onChange={(e) => void changeList(e.target.value)}
+              title={canMove ? undefined : "Seu papel não move cards neste quadro."}
+              className="mt-1 w-full min-w-0 max-w-full truncate rounded-lg border border-white/15 bg-[#0b0f19] px-2 py-1.5 text-sm text-gray-100 focus:border-cyan-400 focus:outline-none disabled:opacity-40"
+            >
+              {lists.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="block text-xs font-medium text-gray-400">
             Responsável
             <select
               defaultValue={card.assigneeId ?? ""}
               onChange={(e) => void save({ assigneeId: e.target.value || null })}
-              className="mt-1 w-full rounded-lg border border-white/15 px-2 py-2 text-sm text-white"
+              className="mt-1 w-full min-w-0 max-w-full truncate rounded-lg border border-white/15 px-2 py-2 text-sm text-white"
             >
               <option value="">Sem responsável</option>
               {users.map((u) => (
@@ -460,7 +516,7 @@ export function CardDetail({
                 "rounded-lg px-3 py-2 text-xs font-medium",
                 dueStatus(card.dueDate) === "late" && "bg-red-500/15 text-red-300",
                 dueStatus(card.dueDate) === "soon" && "bg-amber-400/15 text-amber-300",
-                dueStatus(card.dueDate) === "ok" && "bg-white/10 text-gray-300"
+                dueStatus(card.dueDate) === "ok" && "bg-white/10 text-gray-300",
               )}
             >
               {dueStatus(card.dueDate) === "late"

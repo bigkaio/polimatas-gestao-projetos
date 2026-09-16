@@ -24,7 +24,11 @@ export default async function Page() {
       },
     }),
     prisma.list.findMany({ include: { board: { select: { key: true } } } }),
-    prisma.profile.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.profile.findMany({
+      where: { deactivatedAt: null },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   const listRefs: ListRef[] = lists.map((l) => ({
@@ -55,7 +59,7 @@ export default async function Page() {
       }))}
       lists={listRefs}
       users={users}
-      canManage={await canManageCompliance(session.role)}
+      canManage={await canManageCompliance(session.userId)}
     />
   );
 }

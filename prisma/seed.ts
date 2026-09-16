@@ -260,10 +260,10 @@ async function main() {
     }
   }
 
-  // Matriz de permissões: linha ausente = padrão do briefing. Limpar os
-  // overrides deixa a demonstração sempre no mesmo ponto de partida.
-  console.log("Seed: matriz de permissões no padrão do briefing (seção 3.1)…");
-  await prisma.rolePermission.deleteMany({});
+  // Permissões: linha ausente = modelo da função. Limpar as personalizações
+  // deixa a demonstração sempre no mesmo ponto de partida.
+  console.log("Seed: permissões por pessoa no modelo de cada função (seção 3.1)…");
+  await prisma.userPermission.deleteMany({});
 
   const cardCount = await prisma.card.count();
   if (cardCount > 0) {

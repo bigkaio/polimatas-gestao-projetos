@@ -6,6 +6,7 @@ import { randomInt } from "node:crypto";
 import bcrypt from "bcryptjs";
 import type { Profile, Role } from "@prisma/client";
 import { prisma } from "./prisma";
+import { isActiveUser } from "@/core/permission-store";
 import type { Actor } from "@/core/events";
 
 /**
@@ -56,6 +57,7 @@ export async function login(email: string, password: string): Promise<Session | 
   if (!user) return null;
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) return null;
+  if (user.deactivatedAt) return null; // conta desativada não entra
 
   const session = sessionOf(user);
   await startSession(session);
@@ -155,6 +157,11 @@ export async function getSession(): Promise<Session | null> {
 export async function requireSession(): Promise<Session> {
   const session = await getSession();
   if (!session) redirect("/login");
+  // Desativar precisa valer para quem já está logado: o token continua válido
+  // até expirar, então a checagem é aqui (com cache de 10 s no store).
+  // Só redireciona: apagar o cookie aqui quebraria a renderização — o Next
+  // não deixa escrever cookie fora de Server Action ou Route Handler.
+  if (!(await isActiveUser(session.userId))) redirect("/login");
   if (session.mustChangePassword) redirect("/definir-senha");
   return session;
 }

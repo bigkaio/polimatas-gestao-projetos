@@ -10,7 +10,7 @@ import { initials } from "@/lib/format";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
-  const manageUsers = await canManageUsers(session.role);
+  const manageUsers = await canManageUsers(session.userId);
 
   return (
     <ToastProvider>

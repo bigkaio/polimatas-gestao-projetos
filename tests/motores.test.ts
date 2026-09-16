@@ -62,8 +62,12 @@ describe("US-33/US-31 — compliance bloqueia no servidor", () => {
     await expect(
       domain.createTask(card.id, { title: "[teste] tarefa sem prazo", dueDate: null }, manager)
     ).rejects.toBeInstanceOf(ComplianceError);
-    const count = await prisma.task.count({ where: { cardId: card.id } });
-    expect(count).toBe(0);
+    // Checa a tarefa recusada, e não o total do card: uma automação criada
+    // pelo usuário pode legitimamente ter adicionado outras tarefas ao card.
+    const persisted = await prisma.task.count({
+      where: { cardId: card.id, title: "[teste] tarefa sem prazo" },
+    });
+    expect(persisted).toBe(0);
   });
 
   it("projeto com tarefa aberta não entra em Concluído; nada é persistido", async () => {
