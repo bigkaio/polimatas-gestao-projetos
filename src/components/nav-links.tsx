@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import clsx from "clsx";
 
 const NAV = [
+  { href: "/inicio", label: "Visão geral" },
   { href: "/board/sales", label: "Pipeline de Vendas" },
   { href: "/board/projects", label: "Pipeline de Projetos" },
   { href: "/automations", label: "Automações" },
