@@ -26,6 +26,7 @@ export function NotificationsBell() {
   const [unread, setUnread] = useState(0);
   const [items, setItems] = useState<Item[]>([]);
   const prevUnread = useRef<number | null>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const load = useCallback(async () => {
@@ -51,8 +52,35 @@ export function NotificationsBell() {
     return () => clearInterval(interval);
   }, [load]);
 
+  /**
+   * Fecha o painel ao clicar fora dele ou ao apertar Esc. O listener é de
+   * `mousedown`, não de `click`: se um link dentro do painel for clicado, o
+   * fechamento não pode acontecer antes de o clique chegar ao destino.
+   * Só é registrado enquanto o painel está aberto.
+   */
+  useEffect(() => {
+    if (!open) return;
+
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (target && boxRef.current && !boxRef.current.contains(target)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div ref={boxRef} className="relative">
       <button
         type="button"
         aria-label={`Notificações${unread ? ` — ${unread} não lida(s)` : ""}`}
