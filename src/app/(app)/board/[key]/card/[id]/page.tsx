@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
-import { canComment, canMutateBoard } from "@/core/permission-store";
+import { canComment, canDeleteCard, canMutateBoard } from "@/core/permission-store";
 import {
   CardDetail,
   type CardFullDTO,
@@ -34,7 +34,7 @@ export default async function CardPage({ params }: { params: { key: string; id: 
   });
   if (!card || card.board.key !== params.key) notFound();
 
-  const [users, lists, canMove, mayComment] = await Promise.all([
+  const [users, lists, canMove, mayComment, mayDelete] = await Promise.all([
     prisma.profile.findMany({
       where: { deactivatedAt: null },
       select: { id: true, name: true },
@@ -43,6 +43,7 @@ export default async function CardPage({ params }: { params: { key: string; id: 
     prisma.list.findMany({ where: { boardId: card.boardId }, orderBy: { position: "asc" } }),
     canMutateBoard(session.userId, card.type),
     canComment(session.userId),
+    canDeleteCard(session.userId, card.type),
   ]);
 
   const dto: CardFullDTO = {
@@ -58,6 +59,7 @@ export default async function CardPage({ params }: { params: { key: string; id: 
     clientName: card.clientName,
     clientEmail: card.clientEmail,
     clientPhone: card.clientPhone,
+    leadSource: card.leadSource,
     amount: card.amount === null ? null : String(card.amount),
     lossReason: card.lossReason,
     source: card.sourceCard
@@ -108,6 +110,7 @@ export default async function CardPage({ params }: { params: { key: string; id: 
         currentUser={{ id: session.userId, isAdmin: session.role === "admin" }}
         canMove={canMove}
         canComment={mayComment}
+        canDelete={mayDelete}
       />
     </div>
   );

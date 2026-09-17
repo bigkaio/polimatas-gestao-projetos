@@ -12,6 +12,7 @@ export type CardDTO = {
   dueDate: string | null;
   amount: string | null;
   clientName: string | null;
+  leadSource: string | null;
   lossReason: string | null;
   sourceCardId: string | null;
   hasSpawned: boolean;

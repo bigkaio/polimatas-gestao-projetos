@@ -1,4 +1,4 @@
-import type { AutomationAction, ConditionGroup, Trigger } from "@/core/rules";
+import type { AutomationAction, ConditionGroup, Trigger, WhatsAppAction } from "@/core/rules";
 
 /** Tradução das regras para linguagem natural (US-24/US-25). */
 
@@ -12,6 +12,7 @@ const FIELD_LABELS: Record<string, string> = {
   "card.due_date": "o prazo",
   "card.amount": "o valor",
   "card.client_name": "o cliente",
+  "card.lead_source": "a origem do lead",
   "card.loss_reason": "o motivo de perda",
   "card.open_tasks": "a quantidade de tarefas abertas",
   from_list: "a lista de origem",
@@ -95,6 +96,25 @@ export function humanizeConditions(
   return `se ${parts.join(conditions.op === "AND" ? " e " : " ou ")}`;
 }
 
+/** Destino da ação de WhatsApp em português ("o cliente do card", "Ana", "61999990000"). */
+export function whatsAppTargetLabel(
+  action: WhatsAppAction,
+  users: { id: string; name: string }[]
+): string {
+  switch (action.to) {
+    case "client":
+      return "o cliente do card";
+    case "assignee":
+      return "o responsável do card";
+    case "creator":
+      return "quem criou o card";
+    case "user":
+      return users.find((u) => u.id === action.user_id)?.name ?? "uma pessoa da equipe";
+    default:
+      return action.number?.trim() || "um número";
+  }
+}
+
 export function humanizeAction(
   action: AutomationAction,
   lists: ListRef[],
@@ -112,6 +132,8 @@ export function humanizeAction(
               : (users.find((u) => u.id === action.user_id)?.name ?? "um usuário");
       return `notificar ${target}`;
     }
+    case "send_whatsapp":
+      return `enviar WhatsApp para ${whatsAppTargetLabel(action, users)}`;
     case "move_card":
       return `mover o card para ${listName(action.target_list, lists)}`;
     case "assign_user":

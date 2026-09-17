@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { createMemberAccount, requireSession, type Session } from "@/lib/auth";
+import { createMemberAccount, refreshSession, requireSession, type Session } from "@/lib/auth";
 import {
   CAPABILITY_KEYS,
   ROLE_LABELS,
@@ -14,6 +14,7 @@ import {
   type Capability,
 } from "@/core/permissions";
 import { canManageUsers, invalidatePermissionCache } from "@/core/permission-store";
+import { phoneIssue } from "@/lib/whatsapp";
 import { toResult, type ActionResult } from "./result";
 
 /**
@@ -21,6 +22,16 @@ import { toResult, type ActionResult } from "./result";
  * Tudo passa por `users.manage` e tudo é auditado — a mesma disciplina que o
  * resto do sistema aplica às regras de compliance.
  */
+
+/** WhatsApp opcional: vazio vira null; preenchido precisa ser um número válido. */
+const phoneField = z
+  .string()
+  .trim()
+  .superRefine((s, ctx) => {
+    const issue = s === "" ? null : phoneIssue(s);
+    if (issue) ctx.addIssue({ code: z.ZodIssueCode.custom, message: `WhatsApp: ${issue}` });
+  })
+  .transform((s) => (s === "" ? null : s));
 
 async function requireManager(): Promise<Session | null> {
   const session = await requireSession();
@@ -261,6 +272,70 @@ export async function changeUserRoleAction(input: unknown): Promise<ActionResult
   }
 }
 
+// ----------------------------------------------------------------- nome
+
+const nameSchema = z.object({
+  userId: z.string().uuid(),
+  name: z.string().trim().min(2, "O nome precisa ter pelo menos 2 letras.").max(80),
+});
+
+/** Renomeia a pessoa. O nome antigo continua no histórico via auditoria. */
+export async function updateUserNameAction(input: unknown): Promise<ActionResult> {
+  const session = await requireManager();
+  if (!session) return DENIED;
+
+  const parsed = nameSchema.safeParse(input);
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos.", status: 400 };
+  const { userId, name } = parsed.data;
+
+  try {
+    const user = await prisma.profile.findUnique({ where: { id: userId } });
+    if (!user) return { ok: false, error: "Usuário não encontrado.", status: 404 };
+    if (user.name === name) return { ok: true };
+
+    const updated = await prisma.profile.update({ where: { id: userId }, data: { name } });
+    await audit(session.userId, "user", `${user.email} · nome`, user.name, name);
+    // O nome viaja na sessão: quem renomeia a si mesmo vê a mudança na hora.
+    if (userId === session.userId) await refreshSession(updated);
+    revalidateAll();
+    return { ok: true };
+  } catch (err) {
+    return toResult(err);
+  }
+}
+
+// ------------------------------------------------------------- WhatsApp
+
+const phoneSchema = z.object({
+  userId: z.string().uuid(),
+  phone: phoneField,
+});
+
+/** WhatsApp da pessoa — destino das ações "Enviar WhatsApp" para a equipe. */
+export async function updateUserPhoneAction(input: unknown): Promise<ActionResult> {
+  const session = await requireManager();
+  if (!session) return DENIED;
+
+  const parsed = phoneSchema.safeParse(input);
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos.", status: 400 };
+  const { userId, phone } = parsed.data;
+
+  try {
+    const user = await prisma.profile.findUnique({ where: { id: userId } });
+    if (!user) return { ok: false, error: "Usuário não encontrado.", status: 404 };
+    if ((user.phone ?? null) === phone) return { ok: true };
+
+    await prisma.profile.update({ where: { id: userId }, data: { phone } });
+    await audit(session.userId, "user", `${user.email} · WhatsApp`, user.phone, phone);
+    revalidateAll();
+    return { ok: true };
+  } catch (err) {
+    return toResult(err);
+  }
+}
+
 // ------------------------------------------------ desativar, reativar, excluir
 
 /** O que impede apagar o perfil de vez — e some do caminho se for desativação. */
@@ -393,6 +468,7 @@ const memberSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome."),
   email: z.string().trim().email("Informe um e-mail válido."),
   role: z.nativeEnum(Role),
+  phone: phoneField.optional(),
 });
 
 /**
@@ -410,7 +486,12 @@ export async function createMemberAction(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos.", status: 400 };
 
   try {
-    const result = await createMemberAccount(parsed.data.name, parsed.data.email, parsed.data.role);
+    const result = await createMemberAccount(
+      parsed.data.name,
+      parsed.data.email,
+      parsed.data.role,
+      parsed.data.phone ?? null
+    );
     if ("error" in result) return { ok: false, error: result.error, status: 409 };
 
     await audit(session.userId, "user", result.user.email, null, ROLE_LABELS[result.user.role]);

@@ -4,8 +4,18 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createCardAction } from "@/app/actions/cards";
 import { useToast } from "@/components/toast";
+import { LEAD_SOURCES, OTHER_LEAD_SOURCE } from "@/lib/lead-sources";
 
-const EMPTY = { title: "", client: "", assigneeId: "", dueDate: "", amount: "", description: "" };
+const EMPTY = {
+  title: "",
+  client: "",
+  leadSource: "",
+  leadSourceOther: "",
+  assigneeId: "",
+  dueDate: "",
+  amount: "",
+  description: "",
+};
 
 const fieldCls =
   "w-full rounded-md border border-white/15 bg-[#0b0f19] px-2 py-1.5 text-sm text-gray-100 focus:border-cyan-400 focus:outline-none";
@@ -53,6 +63,9 @@ export function AddCard({
       listId,
       title,
       clientName: isOpportunity ? client : undefined,
+      leadSource: isOpportunity
+        ? (form.leadSource === OTHER_LEAD_SOURCE ? form.leadSourceOther : form.leadSource) || null
+        : undefined,
       assigneeId: form.assigneeId || null,
       dueDate: form.dueDate || null,
       amount: form.amount || null,
@@ -87,6 +100,35 @@ export function AddCard({
           placeholder="Nome do cliente (obrigatório)"
           className="w-full rounded-md border border-white/15 px-2 py-1.5 text-sm focus:border-cyan-400 focus:outline-none"
         />
+      ) : null}
+      {isOpportunity ? (
+        <div className="flex gap-2">
+          <select
+            value={form.leadSource}
+            onChange={(e) => set({ leadSource: e.target.value })}
+            aria-label="Origem do lead"
+            className={fieldCls}
+          >
+            <option value="">Origem do lead (opcional)</option>
+            {LEAD_SOURCES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+            <option value={OTHER_LEAD_SOURCE}>Outra…</option>
+          </select>
+          {form.leadSource === OTHER_LEAD_SOURCE ? (
+            <input
+              autoFocus
+              value={form.leadSourceOther}
+              onChange={(e) => set({ leadSourceOther: e.target.value })}
+              onKeyDown={(e) => e.key === "Enter" && void submit()}
+              placeholder="Qual?"
+              aria-label="Outra origem"
+              className={fieldCls}
+            />
+          ) : null}
+        </div>
       ) : null}
       {more ? (
         <div className="space-y-2 border-t border-white/10 pt-2">

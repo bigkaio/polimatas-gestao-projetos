@@ -57,6 +57,7 @@ export default async function BoardPage({ params }: { params: { key: string } })
     dueDate: c.dueDate ? c.dueDate.toISOString().slice(0, 10) : null,
     amount: c.amount === null ? null : String(c.amount),
     clientName: c.clientName,
+    leadSource: c.leadSource,
     lossReason: c.lossReason,
     sourceCardId: c.sourceCardId,
     hasSpawned: c.spawned !== null,

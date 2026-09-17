@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
-import { moveCardAction, updateCardAction } from "@/app/actions/cards";
+import { deleteCardAction, moveCardAction, updateCardAction } from "@/app/actions/cards";
 import {
   createTaskAction,
   deleteTaskAction,
@@ -14,6 +14,7 @@ import {
 } from "@/app/actions/tasks";
 import { useToast } from "@/components/toast";
 import { brl, dateBR, dueStatus } from "@/lib/format";
+import { LEAD_SOURCES, OTHER_LEAD_SOURCE, isKnownLeadSource } from "@/lib/lead-sources";
 import { Comments, type CommentDTO } from "./comments";
 
 export type { CommentDTO };
@@ -38,6 +39,7 @@ export type CardFullDTO = {
   clientName: string | null;
   clientEmail: string | null;
   clientPhone: string | null;
+  leadSource: string | null;
   amount: string | null;
   lossReason: string | null;
   source: { id: string; title: string; boardKey: string } | null;
@@ -61,6 +63,7 @@ export function CardDetail({
   currentUser,
   canMove,
   canComment,
+  canDelete,
 }: {
   card: CardFullDTO;
   tasks: TaskDTO[];
@@ -70,10 +73,30 @@ export function CardDetail({
   currentUser: { id: string; isAdmin: boolean };
   canMove: boolean;
   canComment: boolean;
+  canDelete: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [, startTransition] = useTransition();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  // Origem fora da lista sugerida abre o campo livre já preenchido.
+  const [otherSource, setOtherSource] = useState(
+    card.leadSource !== null && !isKnownLeadSource(card.leadSource)
+  );
+
+  const remove = async () => {
+    setDeleting(true);
+    const result = await deleteCardAction({ cardId: card.id });
+    if (!result.ok) {
+      setDeleting(false);
+      toast(result.error, "error");
+      return;
+    }
+    toast(`"${result.data?.title ?? card.title}" foi excluído.`, "success");
+    router.replace(`/board/${card.boardKey}`);
+    router.refresh();
+  };
   const [newTask, setNewTask] = useState({ title: "", dueDate: "", assigneeId: "" });
   const taskDueRef = useRef<HTMLInputElement>(null);
   const [highlightDue, setHighlightDue] = useState(false);
@@ -237,6 +260,46 @@ export function CardDetail({
                   className="mt-1 w-full rounded-md border border-white/15 px-2 py-1.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                 />
               </label>
+              {isOpp ? (
+                <label className="text-xs font-medium text-gray-400">
+                  Origem do lead
+                  <div className="mt-1 flex gap-2">
+                    <select
+                      value={otherSource ? OTHER_LEAD_SOURCE : (card.leadSource ?? "")}
+                      onChange={(e) => {
+                        if (e.target.value === OTHER_LEAD_SOURCE) {
+                          setOtherSource(true);
+                          return;
+                        }
+                        setOtherSource(false);
+                        void save({ leadSource: e.target.value || null });
+                      }}
+                      className="w-full rounded-md border border-white/15 bg-[#0b0f19] px-2 py-1.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                    >
+                      <option value="">Não informada</option>
+                      {LEAD_SOURCES.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                      <option value={OTHER_LEAD_SOURCE}>Outra…</option>
+                    </select>
+                    {otherSource ? (
+                      <input
+                        autoFocus={card.leadSource === null || isKnownLeadSource(card.leadSource)}
+                        defaultValue={isKnownLeadSource(card.leadSource) ? "" : (card.leadSource ?? "")}
+                        placeholder="Qual?"
+                        aria-label="Outra origem"
+                        onBlur={(e) => {
+                          if (e.target.value.trim() !== (card.leadSource ?? ""))
+                            void save({ leadSource: e.target.value || null });
+                        }}
+                        className="w-full rounded-md border border-white/15 px-2 py-1.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                      />
+                    ) : null}
+                  </div>
+                </label>
+              ) : null}
               <label className="text-xs font-medium text-gray-400">
                 Valor {isOpp ? "estimado" : "do contrato"} (R$)
                 <input
@@ -247,7 +310,11 @@ export function CardDetail({
                   }
                   placeholder="12.500,00"
                   onBlur={(e) => {
-                    void save({ amount: e.target.value || null });
+                    // "12.500,00" → 12500; só salva se o valor mudou de fato
+                    const typed = e.target.value.trim().replace(/\./g, "").replace(",", ".");
+                    const next = typed === "" ? null : Number(typed);
+                    const prev = card.amount === null ? null : Number(card.amount);
+                    if (next !== prev) void save({ amount: e.target.value || null });
                   }}
                   className="mt-1 w-full rounded-md border border-white/15 px-2 py-1.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                 />
@@ -528,6 +595,46 @@ export function CardDetail({
             <p className="rounded-lg bg-emerald-400/10 px-3 py-2 text-sm font-semibold text-emerald-300">
               {brl(card.amount)}
             </p>
+          ) : null}
+
+          {canDelete ? (
+            <div className="border-t border-white/10 pt-4">
+              {confirmingDelete ? (
+                <div className="space-y-2 rounded-lg border border-red-400/30 bg-red-500/5 p-3">
+                  <p className="text-xs text-red-200">
+                    Excluir <strong>{card.title}</strong> de vez? Tarefas, comentários e histórico
+                    vão junto. Isso não tem volta.
+                    {card.spawned ? " O projeto gerado continua existindo." : ""}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={deleting}
+                      onClick={() => void remove()}
+                      className="rounded-full bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-400 disabled:opacity-50"
+                    >
+                      {deleting ? "Excluindo…" : "Excluir de vez"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={deleting}
+                      onClick={() => setConfirmingDelete(false)}
+                      className="rounded-full px-3 py-1.5 text-xs text-gray-300 hover:bg-white/10"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDelete(true)}
+                  className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-400 hover:bg-red-500/10"
+                >
+                  🗑 Excluir card
+                </button>
+              )}
+            </div>
           ) : null}
         </aside>
       </div>

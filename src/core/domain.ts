@@ -10,9 +10,11 @@ import {
   canComment,
   canManageLists,
   canCompleteTask,
+  canDeleteCard,
   canEditCard,
   canManageTasks,
   canMutateBoard,
+  loadUserPermissions,
 } from "./permission-store";
 
 /**
@@ -73,6 +75,7 @@ export type CreateCardData = {
   clientName?: string | null;
   clientEmail?: string | null;
   clientPhone?: string | null;
+  leadSource?: string | null;
   amount?: string | null;
   sourceCardId?: string | null;
   createdBy: string;
@@ -111,6 +114,7 @@ export async function createCard(
     clientName: data.clientName ?? null,
     clientEmail: data.clientEmail ?? null,
     clientPhone: data.clientPhone ?? null,
+    leadSource: data.leadSource ?? null,
     amount: data.amount ? new Prisma.Decimal(data.amount) : null,
     sourceCardId: data.sourceCardId ?? null,
   } satisfies Card;
@@ -140,6 +144,7 @@ export async function createCard(
       clientName: data.clientName ?? null,
       clientEmail: data.clientEmail ?? null,
       clientPhone: data.clientPhone ?? null,
+      leadSource: data.leadSource ?? null,
       amount: data.amount ?? null,
       sourceCardId: data.sourceCardId ?? null,
       createdBy: data.createdBy,
@@ -177,6 +182,7 @@ export type CardPatch = Partial<{
   clientName: string | null;
   clientEmail: string | null;
   clientPhone: string | null;
+  leadSource: string | null;
   amount: string | null;
   lossReason: string | null;
 }>;
@@ -212,7 +218,13 @@ export async function updateCard(
   const changedFields = (Object.keys(patch) as (keyof CardPatch)[]).filter((k) => {
     const prev = k === "amount" ? (card.amount === null ? null : String(card.amount)) : card[k];
     const next = patch[k];
-    const norm = (v: unknown) => (v instanceof Date ? v.toISOString().slice(0, 10) : (v ?? null));
+    const norm = (v: unknown) => {
+      if (v instanceof Date) return v.toISOString().slice(0, 10);
+      // "88000" e "88000.00" são o mesmo valor: sem isto, todo blur no campo
+      // gerava uma linha de histórico e disparava "campo alterado".
+      if (k === "amount" && v !== null && v !== undefined) return Number(v);
+      return v ?? null;
+    };
     return norm(prev) !== norm(next);
   });
   if (changedFields.length === 0) return card;
@@ -252,11 +264,14 @@ export async function updateCard(
 
 export async function moveCard(
   cardId: string,
-  target: { toListId: string; index?: number },
+  /** `lossReason` (US-14) é gravado junto com o movimento: se ele for recusado, nada fica. */
+  target: { toListId: string; index?: number; lossReason?: string },
   actor: Actor | null,
   auto?: AutomationContext
 ): Promise<Card> {
-  const card = await requireCard(cardId);
+  const stored = await requireCard(cardId);
+  const lossReason = target.lossReason?.trim() || undefined;
+  const card = lossReason ? { ...stored, lossReason } : stored;
   const toList = await prisma.list.findUnique({
     where: { id: target.toListId },
     include: { board: true },
@@ -279,8 +294,13 @@ export async function moveCard(
     actorId: actor?.id ?? null,
     action: { kind: "card.move", from: card.list.stageKey, to: toList.stageKey },
   };
-  await assertCompliance("card.move", ctx, meta);
-  if (toList.semantics === "won") await assertCompliance("opportunity.close", ctx, meta);
+  // Reordenar dentro da mesma coluna não é mudança de etapa: as regras de
+  // movimento ("sair do Backlog", "entrar em Concluído") não se aplicam — o
+  // quadro já libera esse gesto, e o servidor recusava com o toast de erro.
+  if (card.listId !== toList.id) {
+    await assertCompliance("card.move", ctx, meta);
+    if (toList.semantics === "won") await assertCompliance("opportunity.close", ctx, meta);
+  }
 
   // Posição fracionária entre vizinhos do índice pedido.
   const siblings = await prisma.card.findMany({
@@ -293,10 +313,19 @@ export async function moveCard(
   const after = siblings[index]?.position ?? before + 2048;
   const position = (before + after) / 2;
 
+  const reasonChanged = lossReason !== undefined && lossReason !== stored.lossReason;
   const updated = await prisma.card.update({
     where: { id: cardId },
-    data: { listId: toList.id, position },
+    data: { listId: toList.id, position, ...(reasonChanged ? { lossReason } : {}) },
   });
+
+  if (reasonChanged) {
+    await log(cardId, actor?.id ?? null, "card.updated", { lossReason: stored.lossReason }, { lossReason }, auto);
+    await dispatch(
+      { type: "card.field_changed", boardKey: card.board.key, cardId, actorId: actor?.id ?? null, field: "lossReason" },
+      auto?.depth ?? 0
+    );
+  }
 
   if (card.listId !== toList.id) {
     await log(
@@ -320,6 +349,30 @@ export async function moveCard(
     );
   }
   return updated;
+}
+
+/**
+ * Exclusão definitiva. Tarefas, comentários, notificações e o histórico do
+ * card vão junto (cascade); execuções de automação e violações ficam, sem o
+ * card. Um projeto gerado por esta venda continua existindo, só perde o elo
+ * de origem. Como o log do card some com ele, o rastro fica na venda/projeto
+ * ligado, quando houver.
+ */
+export async function deleteCard(cardId: string, actor: Actor): Promise<{ title: string }> {
+  const card = await requireCard(cardId);
+  if (!(await canDeleteCard(actor.id, card.board.key === "sales" ? "opportunity" : "project"))) {
+    throw new PermissionError("Seu papel não exclui cards neste quadro.");
+  }
+
+  const linked = await prisma.card.findFirst({
+    where: { OR: [{ id: card.sourceCardId ?? "" }, { sourceCardId: card.id }] },
+    select: { id: true },
+  });
+  await prisma.card.delete({ where: { id: cardId } });
+  if (linked) {
+    await log(linked.id, actor.id, "card.linked_deleted", { title: card.title }, null);
+  }
+  return { title: card.title };
 }
 
 export async function addComment(
@@ -495,8 +548,10 @@ export async function createComment(cardId: string, text: string, actor: Actor) 
 async function requireOwnComment(commentId: string, actor: Actor, verb: string) {
   const comment = await prisma.comment.findUnique({ where: { id: commentId } });
   if (!comment) throw new NotFoundError("Comentário não encontrado.");
-  // O admin modera; os demais mexem apenas no que escreveram.
-  const allowed = comment.authorId === actor.id || (verb === "remover" && actor.role === "admin");
+  // O admin modera; os demais mexem apenas no que escreveram. O papel vem do
+  // banco, não da sessão: o JWT guarda o papel de quando a pessoa entrou.
+  const isAdmin = verb === "remover" && (await loadUserPermissions(actor.id))?.role === "admin";
+  const allowed = comment.authorId === actor.id || isAdmin;
   if (!allowed) throw new PermissionError(`Você só pode ${verb} os próprios comentários.`);
   return comment;
 }
@@ -650,11 +705,13 @@ export async function deleteTask(taskId: string, actor: Actor | null) {
 }
 
 export async function reorderTasks(cardId: string, orderedIds: string[], actor: Actor | null) {
-  await requireCard(cardId);
+  const card = await requireCard(cardId);
+  if (actor && !(await canManageTasks(actor.id, card.board.key === "sales" ? "opportunity" : "project", card))) {
+    throw new PermissionError("Você só reordena tarefas de cards que pode editar.");
+  }
   await prisma.$transaction(
     orderedIds.map((id, i) =>
       prisma.task.update({ where: { id, cardId }, data: { position: (i + 1) * 1024 } })
     )
   );
-  void actor;
 }

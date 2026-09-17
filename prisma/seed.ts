@@ -20,14 +20,18 @@ async function main() {
     { email: "vendas@polimatas.dev", name: "Valentina Vendas", role: "sales" },
     { email: "executor@polimatas.dev", name: "Enzo Executor", role: "member" },
   ] as const;
+  // Banco em uso (já tem cards): o seed só garante o que falta e não desfaz o
+  // que a equipe mudou — nomes, papéis e permissões por pessoa ficam.
+  const fresh = (await prisma.card.count()) === 0;
+
   const users: Record<string, string> = {};
   for (const u of usersData) {
     const profile = await prisma.profile.upsert({
       where: { email: u.email },
-      update: { name: u.name, role: u.role },
+      update: fresh ? { name: u.name, role: u.role } : {},
       create: { email: u.email, name: u.name, role: u.role, passwordHash: password },
     });
-    users[u.role] = profile.id;
+    users[profile.role] = profile.id;
   }
 
   console.log("Seed: quadros e listas (US-11/US-16)…");
@@ -202,6 +206,25 @@ async function main() {
           target: "assignee",
           message: "Projeto criado a partir da venda {{card.title}}",
         },
+        // Aviso no WhatsApp de quem acompanha as vendas. Fica depois de
+        // create_project_card de propósito: quando o projeto já existia, o
+        // motor interrompe a regra ali e o aviso não sai duplicado (US-23).
+        ...(process.env.WHATSAPP_NOTIFY_NUMBER
+          ? [
+              {
+                type: "send_whatsapp",
+                to: "number",
+                number: process.env.WHATSAPP_NOTIFY_NUMBER,
+                message: [
+                  "✅ *Venda fechada:* {{card.title}}",
+                  "Cliente: {{card.client_name}}",
+                  "Valor: {{card.amount_brl}}",
+                  "",
+                  "O projeto foi criado no Backlog do Pipeline de Projetos e vai ser iniciado.",
+                ].join("\n"),
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -260,16 +283,15 @@ async function main() {
     }
   }
 
-  // Permissões: linha ausente = modelo da função. Limpar as personalizações
-  // deixa a demonstração sempre no mesmo ponto de partida.
-  console.log("Seed: permissões por pessoa no modelo de cada função (seção 3.1)…");
-  await prisma.userPermission.deleteMany({});
-
-  const cardCount = await prisma.card.count();
-  if (cardCount > 0) {
-    console.log(`Seed: ${cardCount} cards já existem — dados de demonstração preservados (idempotente).`);
+  if (!fresh) {
+    const cardCount = await prisma.card.count();
+    console.log(`Seed: ${cardCount} cards já existem — dados, nomes, papéis e permissões preservados (idempotente).`);
     return;
   }
+
+  // Permissões: linha ausente = modelo da função. Só num banco novo.
+  console.log("Seed: permissões por pessoa no modelo de cada função (seção 3.1)…");
+  await prisma.userPermission.deleteMany({});
 
   console.log("Seed: oportunidades e projetos de demonstração…");
   const opp = (data: {
@@ -278,6 +300,7 @@ async function main() {
     client: string;
     email?: string;
     phone?: string;
+    source?: string;
     amount?: string;
     assignee?: string;
     due?: number;
@@ -295,6 +318,7 @@ async function main() {
         clientName: data.client,
         clientEmail: data.email ?? null,
         clientPhone: data.phone ?? null,
+        leadSource: data.source ?? null,
         amount: data.amount ?? null,
         lossReason: data.lossReason ?? null,
         assigneeId: data.assignee ?? users.sales!,
@@ -303,9 +327,9 @@ async function main() {
       },
     });
 
-  await opp({ title: "Site institucional", list: "lead", client: "Padaria Pão Quente", email: "contato@paoquente.com.br", phone: "(11) 98888-0001" });
-  await opp({ title: "App de agendamento", list: "lead", client: "Clínica Sorriso", email: "adm@clinicasorriso.com.br" });
-  await opp({ title: "Sistema de estoque", list: "qualificacao", client: "Auto Peças Silva", amount: "18000.00", due: 12 });
+  await opp({ title: "Site institucional", list: "lead", client: "Padaria Pão Quente", email: "contato@paoquente.com.br", phone: "(11) 98888-0001", source: "Instagram" });
+  await opp({ title: "App de agendamento", list: "lead", client: "Clínica Sorriso", email: "adm@clinicasorriso.com.br", source: "Indicação" });
+  await opp({ title: "Sistema de estoque", list: "qualificacao", client: "Auto Peças Silva", amount: "18000.00", due: 12, source: "Site" });
   await opp({ title: "Portal do aluno", list: "proposta", client: "Colégio Horizonte", amount: "42000.00", due: 8, description: "Portal com notas, boletos e comunicação com responsáveis." });
   await opp({ title: "E-commerce B2B", list: "negociacao", client: "Distribuidora Norte", amount: "65000.00", due: 4, description: "Catálogo com preço por perfil de cliente e integração com ERP." });
   await opp({ title: "Landing pages de campanha", list: "negociacao", client: "Agência Vetor", amount: "9500.00", due: 6 });

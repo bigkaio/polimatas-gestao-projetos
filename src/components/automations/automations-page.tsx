@@ -27,7 +27,7 @@ export type AutomationDTO = {
 };
 
 type CardRef = { id: string; title: string; type: string };
-type UserRef = { id: string; name: string };
+type UserRef = { id: string; name: string; hasWhatsApp?: boolean };
 
 /** Largura fixa: as ações ficam alinhadas entre um card e outro. A cor fica
  *  por conta de cada botão — misturar as duas aqui gera conflito no clsx. */

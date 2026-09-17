@@ -10,6 +10,8 @@ import {
   reactivateUserAction,
   resetUserPermissionsAction,
   saveUserPermissionsAction,
+  updateUserNameAction,
+  updateUserPhoneAction,
 } from "@/app/actions/settings";
 import { ROLE_LABELS, type Capability, type PermissionMatrix } from "@/core/permissions";
 import { relativeTime } from "@/lib/format";
@@ -25,6 +27,8 @@ export type UserDTO = {
   name: string;
   email: string;
   role: Role;
+  /** WhatsApp (DDD + número) — destino das automações "Enviar WhatsApp". */
+  phone: string | null;
   createdAt: string;
   mustChangePassword: boolean;
   active: boolean;
@@ -188,6 +192,29 @@ export function SettingsPage({
       router.refresh();
     });
 
+  const renomear = (user: UserDTO, name: string) => {
+    if (name.trim() === user.name) return;
+    startTransition(async () => {
+      const res = await updateUserNameAction({ userId: user.id, name });
+      if (!res.ok) return toast(res.error, "error");
+      toast(`${user.name} agora se chama ${name.trim()}.`, "success");
+      router.refresh();
+    });
+  };
+
+  const salvarWhatsApp = (user: UserDTO, phone: string) => {
+    if (phone.trim() === (user.phone ?? "")) return;
+    startTransition(async () => {
+      const res = await updateUserPhoneAction({ userId: user.id, phone });
+      if (!res.ok) return toast(res.error, "error");
+      toast(
+        phone.trim() ? `WhatsApp de ${user.name} salvo.` : `WhatsApp de ${user.name} removido.`,
+        "success"
+      );
+      router.refresh();
+    });
+  };
+
   const trocarFuncao = (user: UserDTO, role: Role) =>
     startTransition(async () => {
       const res = await changeUserRoleAction({ userId: user.id, role });
@@ -234,8 +261,23 @@ export function SettingsPage({
               <div key={user.id} className="rounded-2xl border border-white/10 bg-[#141413] p-4">
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-white">
-                      {user.name}
+                    <p className="flex flex-wrap items-center font-medium text-white">
+                      <input
+                        key={user.name}
+                        defaultValue={user.name}
+                        aria-label="Nome"
+                        disabled={pending}
+                        onBlur={(e) => renomear(user, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") e.currentTarget.blur();
+                          if (e.key === "Escape") {
+                            e.currentTarget.value = user.name;
+                            e.currentTarget.blur();
+                          }
+                        }}
+                        title="Clique para renomear; Enter ou sair do campo salva"
+                        className="min-w-0 max-w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 font-medium text-white hover:border-white/15 focus:border-cyan-400 focus:outline-none disabled:opacity-40"
+                      />
                       {eu && (
                         <span className="ml-2 rounded-full border border-white/15 px-2 py-0.5 text-xs text-gray-400">
                           você
@@ -264,6 +306,19 @@ export function SettingsPage({
                       ) : null}
                     </p>
                   </div>
+                  <input
+                    key={user.phone ?? ""}
+                    defaultValue={user.phone ?? ""}
+                    disabled={pending}
+                    onBlur={(e) => salvarWhatsApp(user, e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") e.currentTarget.blur();
+                    }}
+                    placeholder="WhatsApp (DDD + número)"
+                    inputMode="tel"
+                    title="Recebe as automações 'Enviar WhatsApp' dirigidas a esta pessoa"
+                    className="w-52 rounded-lg border border-white/15 bg-[#141413] px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:border-cyan-400 focus:outline-none disabled:opacity-40"
+                  />
                   <select
                     value={user.role}
                     disabled={pending || eu}

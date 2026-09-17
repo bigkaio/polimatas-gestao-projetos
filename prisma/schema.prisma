@@ -50,6 +50,8 @@ model Profile {
   email        String   @unique
   role         Role     @default(member)
   avatarUrl    String?  @map("avatar_url")
+  /// WhatsApp da pessoa (DDD + número): destino da ação "Enviar WhatsApp".
+  phone        String?
   passwordHash String   @map("password_hash")
   /// Conta criada pelo admin com senha temporária: troca obrigatória no primeiro login.
   mustChangePassword Boolean @default(false) @map("must_change_password")
@@ -115,6 +117,8 @@ model Card {
   clientName   String?   @map("client_name")
   clientEmail  String?   @map("client_email")
   clientPhone  String?   @map("client_phone")
+  /// De onde veio a oportunidade (indicação, site, Instagram…); livre, com sugestões na tela.
+  leadSource   String?   @map("lead_source")
   amount       Decimal?  @db.Decimal(12, 2)
   lossReason   String?   @map("loss_reason")
   sourceCardId String?   @unique @map("source_card_id")

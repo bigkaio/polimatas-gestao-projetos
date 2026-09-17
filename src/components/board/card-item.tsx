@@ -68,6 +68,14 @@ export function CardItem({
             {brl(card.amount)}
           </span>
         ) : null}
+        {card.leadSource ? (
+          <span
+            title="Origem do lead"
+            className="rounded-md bg-violet-400/10 px-1.5 py-0.5 font-medium text-violet-300"
+          >
+            {card.leadSource}
+          </span>
+        ) : null}
         {card.tasksTotal > 0 ? (
           <span
             className={clsx(

@@ -17,7 +17,19 @@ import type { Actor } from "@/core/events";
  */
 
 const COOKIE = "polimatas_session";
-const secret = () => new TextEncoder().encode(process.env.SESSION_SECRET ?? "dev-secret");
+
+/** Valores de exemplo que não podem chegar à produção. */
+export const PLACEHOLDER_SECRETS = new Set(["", "troque-me", "dev-secret"]);
+
+export function assertProductionSecret(name: string): string {
+  const value = process.env[name] ?? "";
+  if (process.env.NODE_ENV === "production" && PLACEHOLDER_SECRETS.has(value)) {
+    throw new Error(`${name} não configurado: defina um valor longo e aleatório em produção.`);
+  }
+  return value;
+}
+
+const secret = () => new TextEncoder().encode(assertProductionSecret("SESSION_SECRET") || "dev-secret");
 
 export type Session = {
   userId: string;
@@ -64,6 +76,14 @@ export async function login(email: string, password: string): Promise<Session | 
   return session;
 }
 
+/**
+ * Reemite a sessão a partir do perfil atual. Nome e papel viajam no JWT, então
+ * quem muda o próprio nome veria o antigo no cabeçalho até o próximo login.
+ */
+export async function refreshSession(user: Profile): Promise<void> {
+  await startSession(sessionOf(user));
+}
+
 /** Auto-cadastro: papel padrão `member` (US-03), como no primeiro acesso via Supabase Auth. */
 export async function signup(
   name: string,
@@ -104,7 +124,8 @@ export function generateTemporaryPassword(length = 12): string {
 export async function createMemberAccount(
   name: string,
   email: string,
-  role: Role
+  role: Role,
+  phone: string | null = null
 ): Promise<{ user: Profile; temporaryPassword: string } | { error: string }> {
   const normalizedEmail = email.toLowerCase().trim();
   const existing = await prisma.profile.findUnique({ where: { email: normalizedEmail } });
@@ -116,6 +137,7 @@ export async function createMemberAccount(
       name: name.trim(),
       email: normalizedEmail,
       role,
+      phone,
       passwordHash: await bcrypt.hash(temporaryPassword, 10),
       mustChangePassword: true,
     },

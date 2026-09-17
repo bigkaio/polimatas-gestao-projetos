@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import * as domain from "@/core/domain";
-import { ComplianceError } from "@/core/errors";
+import { ComplianceError, PermissionError } from "@/core/errors";
 import type { Actor } from "@/core/events";
 import { actorWithRole, cleanupTestUsers } from "./helpers";
 
@@ -120,10 +120,84 @@ describe("US-33/US-31 — compliance bloqueia no servidor", () => {
       domain.moveCard(opp.id, { toListId: lists.perdido!.id }, salesActor)
     ).rejects.toBeInstanceOf(ComplianceError);
 
-    await domain.updateCard(opp.id, { lossReason: "Sem orçamento neste semestre." }, salesActor);
-    await domain.moveCard(opp.id, { toListId: lists.perdido!.id }, salesActor);
+    // Motivo recusado junto com o movimento não fica gravado (o executor não move vendas)
+    const member = await actorWithRole("member");
+    await expect(
+      domain.moveCard(
+        opp.id,
+        { toListId: lists.perdido!.id, lossReason: "[teste] não deveria ficar" },
+        member
+      )
+    ).rejects.toBeInstanceOf(PermissionError);
+    expect((await prisma.card.findUniqueOrThrow({ where: { id: opp.id } })).lossReason).toBeNull();
+
+    // Motivo e movimento vão juntos, com registro no histórico
+    await domain.moveCard(
+      opp.id,
+      { toListId: lists.perdido!.id, lossReason: "Sem orçamento neste semestre." },
+      salesActor
+    );
     const after = await prisma.card.findUniqueOrThrow({ where: { id: opp.id } });
     expect(after.listId).toBe(lists.perdido!.id);
+    expect(after.lossReason).toBe("Sem orçamento neste semestre.");
+    const reasonLog = await prisma.activityLog.findFirst({
+      where: { cardId: opp.id, action: "card.updated" },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(JSON.stringify(reasonLog?.after)).toContain("Sem orçamento");
+  });
+
+  it("salvar o mesmo valor com outra grafia não gera histórico nem evento", async () => {
+    const card = await freshProject("[teste] Valor repetido");
+    await domain.updateCard(card.id, { amount: "88000.00" }, manager);
+    const before = await prisma.activityLog.count({ where: { cardId: card.id } });
+
+    // "88000" no banco, "88000.00" vindo do campo formatado
+    await domain.updateCard(card.id, { amount: "88000.00" }, manager);
+    await domain.updateCard(card.id, { amount: "88000" }, manager);
+    expect(await prisma.activityLog.count({ where: { cardId: card.id } })).toBe(before);
+  });
+
+  it("reordenar o checklist exige poder editar as tarefas do card", async () => {
+    const card = await freshProject("[teste] Reordenar checklist");
+    const a = await domain.createTask(card.id, { title: "[teste] a", dueDate: new Date(Date.now() + 86_400_000) }, manager);
+    const b = await domain.createTask(card.id, { title: "[teste] b", dueDate: new Date(Date.now() + 86_400_000) }, manager);
+
+    // vendedor não mexe no quadro de projetos
+    await expect(domain.reorderTasks(card.id, [b.id, a.id], salesActor)).rejects.toBeInstanceOf(
+      PermissionError
+    );
+    await domain.reorderTasks(card.id, [b.id, a.id], manager);
+    // a automação de kickoff pode ter adicionado outra tarefa: olha só a ordem relativa de a e b
+    const ordered = await prisma.task.findMany({ where: { cardId: card.id }, orderBy: { position: "asc" } });
+    const ids = ordered.map((t) => t.id);
+    expect(ids.indexOf(b.id)).toBeLessThan(ids.indexOf(a.id));
+  });
+
+  it("projeto sem prazo reordena dentro do Backlog, mas não sai dele", async () => {
+    const card = await domain.createCard(
+      {
+        boardId: projectsBoardId,
+        listId: lists.backlog!.id,
+        type: "project",
+        title: "[teste] Projeto sem prazo no Backlog",
+        assigneeId: manager.id,
+        createdBy: manager.id,
+      },
+      manager
+    );
+
+    // mudar a posição na própria coluna não é sair do Backlog
+    await domain.moveCard(card.id, { toListId: lists.backlog!.id, index: 0 }, manager);
+
+    await expect(
+      domain.moveCard(card.id, { toListId: lists.em_andamento!.id }, manager)
+    ).rejects.toBeInstanceOf(ComplianceError);
+
+    await domain.updateCard(card.id, { dueDate: new Date(Date.now() + 7 * 86_400_000) }, manager);
+    await domain.moveCard(card.id, { toListId: lists.em_andamento!.id }, manager);
+    const after = await prisma.card.findUniqueOrThrow({ where: { id: card.id } });
+    expect(after.listId).toBe(lists.em_andamento!.id);
   });
 });
 

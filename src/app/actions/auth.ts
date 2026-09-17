@@ -35,6 +35,9 @@ export async function signupAction(
   _prev: { error: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
+  // A action pode ser chamada por POST direto, sem passar pela página.
+  if (process.env.ALLOW_SELF_SIGNUP !== "true")
+    return { error: "O cadastro é feito pelo administrador em Configurações." };
   const parsed = signupSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),

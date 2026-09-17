@@ -355,6 +355,7 @@ de **modelo**. Quem manda é a pessoa: o admin liga e desliga cada uma das onze
 | `board.projects.mutate` — criar/mover projetos | ❌ | ❌ | ✅ | ✅ |
 | `card.edit.own` — editar card em que é responsável | ✅ | ✅ | ✅ | ✅ |
 | `card.edit.any` — editar card de outra pessoa | ✅ | ✅ | ✅ | ✅ |
+| `card.delete` — excluir cards (com tarefas, comentários e histórico) | ❌ | ❌ | ✅ | ✅ |
 | `card.comment` — comentar nos cards | ✅ | ✅ | ✅ | ✅ |
 | `lists.manage` — criar, renomear e excluir colunas | ❌ | ❌ | ✅ | ✅ |
 | `task.manage` — criar/editar/remover tarefas | ✅ | ✅ | ✅ | ✅ |
@@ -599,6 +600,7 @@ abertas, lista de origem/destino e dados da tarefa. **O mesmo avaliador
 | Ação | Efeito |
 |---|---|
 | `notify_user` | Notifica o responsável, o criador, um usuário fixo ou todos |
+| `send_whatsapp` | Envia WhatsApp ao cliente do card, ao responsável, a quem criou o card, a alguém da equipe (WhatsApp do perfil, em Configurações) ou a um número fixo, via Evolution API (`src/lib/whatsapp.ts`) |
 | `move_card` | Move o card para outra lista |
 | `assign_user` | Define o responsável |
 | `set_due_date` | Define o prazo (data fixa ou hoje + N dias) |
@@ -647,6 +649,7 @@ flowchart LR
     H --> I["Herda cliente, e-mail, telefone,<br/>valor, descrição e responsável"]
     I --> J["Liga source_card_id<br/>+ comentário na venda"]
     J --> K["notify_user<br/>avisa o responsável"]
+    K --> L["send_whatsapp<br/>avisa no WhatsApp<br/>(se configurado)"]
 ```
 
 1. A oportunidade entra em *Fechado* (semântica `won`). A interface pede confirmação
@@ -825,8 +828,11 @@ npm run dev
 |---|---|
 | `DATABASE_URL` | Conexão do Prisma (em produção, com pooling) |
 | `DIRECT_URL` | Conexão direta para migrações |
-| `SESSION_SECRET` | Assinatura do JWT de sessão — **troque em produção** |
+| `SESSION_SECRET` | Assinatura do JWT de sessão — **troque em produção** (com `NODE_ENV=production`, o valor de exemplo derruba o login e o cron de propósito) |
 | `CRON_SECRET` | Protege `/api/cron/tick` |
+| `ALLOW_SELF_SIGNUP` | `"true"` libera o auto-cadastro em `/cadastro`; desligado por padrão (a equipe entra pelo "Adicionar membro") |
+| `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE` | Evolution API (WhatsApp) usado pela ação "Enviar WhatsApp" das automações — opcionais; sem elas a ação é pulada |
+| `WHATSAPP_NOTIFY_NUMBER` | Número (DDD + número) que o seed coloca no aviso de venda fechada — opcional |
 
 **Disparar o cron manualmente** (localmente não há Vercel Cron):
 

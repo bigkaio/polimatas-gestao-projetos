@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { runAutomation } from "@/core/engine";
 import { triggerSchema } from "@/core/rules";
+import { assertProductionSecret } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,9 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: NextRequest) {
   const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Em produção, segredo de exemplo derruba o endpoint em vez de proteger nada.
+  const cronSecret = assertProductionSecret("CRON_SECRET");
+  if (!cronSecret || auth !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

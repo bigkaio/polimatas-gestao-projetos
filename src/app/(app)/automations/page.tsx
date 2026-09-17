@@ -17,7 +17,7 @@ export default async function Page() {
     prisma.list.findMany({ include: { board: { select: { key: true } } } }),
     prisma.profile.findMany({
       where: { deactivatedAt: null },
-      select: { id: true, name: true },
+      select: { id: true, name: true, phone: true },
       orderBy: { name: "asc" },
     }),
     prisma.card.findMany({
@@ -47,7 +47,7 @@ export default async function Page() {
         runCount: a._count.runs,
       }))}
       lists={listRefs}
-      users={users}
+      users={users.map((u) => ({ id: u.id, name: u.name, hasWhatsApp: u.phone !== null }))}
       cards={cards}
       canManage={await canManageAutomations(session.userId)}
     />

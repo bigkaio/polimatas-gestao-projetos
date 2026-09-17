@@ -107,12 +107,14 @@ export default async function LandingPage() {
                 >
                   Entrar
                 </Link>
-                <Link
-                  href="/cadastro"
-                  className="rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-black hover:bg-gray-200"
-                >
-                  Cadastrar-se
-                </Link>
+                {process.env.ALLOW_SELF_SIGNUP === "true" ? (
+                  <Link
+                    href="/cadastro"
+                    className="rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-black hover:bg-gray-200"
+                  >
+                    Cadastrar-se
+                  </Link>
+                ) : null}
               </>
             )}
           </div>

@@ -64,6 +64,7 @@ Estrutura de uma regra: **Gatilho → Condições (E/OU) → Ações**.
 | Ação | Efeito |
 |---|---|
 | `notify_user` | Notifica responsável, criador, um usuário fixo ou todos |
+| `send_whatsapp` | Envia WhatsApp ao cliente do card, a alguém da equipe ou a um número fixo (Evolution API) |
 | `move_card` | Move o card para outra lista (inclusive *Atrasados*) |
 | `assign_user` | Define o responsável |
 | `set_due_date` | Define prazo (data fixa ou "hoje + N dias") |

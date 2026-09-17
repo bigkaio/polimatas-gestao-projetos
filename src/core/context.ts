@@ -1,5 +1,6 @@
 import type { Card, List, Task } from "@prisma/client";
 import type { EvalContext } from "./conditions";
+import { brl } from "@/lib/format";
 
 type CardWithRelations = Card & {
   list?: List | null;
@@ -32,7 +33,11 @@ export function cardContext(
     "card.assignee": card.assigneeId,
     "card.due_date": dateStr(card.dueDate),
     "card.amount": card.amount === null || card.amount === undefined ? null : Number(card.amount),
+    // Valor já formatado para mensagens ("R$ 88.000,00"); vazio quando não há valor.
+    "card.amount_brl":
+      card.amount === null || card.amount === undefined ? null : brl(String(card.amount)),
     "card.client_name": card.clientName,
+    "card.lead_source": card.leadSource,
     "card.loss_reason": card.lossReason,
     "card.open_tasks": openTasks ?? 0,
     open_tasks: openTasks ?? 0,

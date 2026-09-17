@@ -32,6 +32,7 @@ const createCardSchema = z.object({
   clientName: z.string().nullable().optional(),
   clientEmail: z.string().email("E-mail do cliente inválido.").nullable().optional().or(z.literal("").transform(() => null)),
   clientPhone: z.string().nullable().optional(),
+  leadSource: z.string().trim().max(80).nullable().optional(),
   amount: amountField,
 });
 
@@ -62,6 +63,7 @@ export async function createCardAction(input: unknown): Promise<ActionResult<{ i
         clientName: parsed.data.clientName?.trim() || null,
         clientEmail: parsed.data.clientEmail || null,
         clientPhone: parsed.data.clientPhone || null,
+        leadSource: parsed.data.leadSource || null,
         amount: parsed.data.amount ?? null,
         createdBy: session.userId,
       },
@@ -69,6 +71,19 @@ export async function createCardAction(input: unknown): Promise<ActionResult<{ i
     );
     revalidatePath("/board", "layout");
     return { ok: true, data: { id: card.id } };
+  } catch (err) {
+    return toResult(err);
+  }
+}
+
+export async function deleteCardAction(input: unknown): Promise<ActionResult<{ title: string }>> {
+  const session = await requireSession();
+  const parsed = z.object({ cardId: z.string().uuid() }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Dados inválidos.", status: 400 };
+  try {
+    const data = await domain.deleteCard(parsed.data.cardId, sessionActor(session));
+    revalidatePath("/board", "layout");
+    return { ok: true, data };
   } catch (err) {
     return toResult(err);
   }
@@ -84,6 +99,13 @@ const updateCardSchema = z.object({
     clientName: z.string().nullable().optional(),
     clientEmail: z.string().nullable().optional(),
     clientPhone: z.string().nullable().optional(),
+    leadSource: z
+      .string()
+      .trim()
+      .max(80)
+      .transform((s) => s || null)
+      .nullable()
+      .optional(),
     amount: amountField,
     lossReason: z.string().nullable().optional(),
   }),
@@ -117,16 +139,9 @@ export async function moveCardAction(input: unknown): Promise<ActionResult> {
   if (!parsed.success)
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos.", status: 400 };
   try {
-    if (parsed.data.lossReason?.trim()) {
-      await domain.updateCard(
-        parsed.data.cardId,
-        { lossReason: parsed.data.lossReason.trim() },
-        sessionActor(session)
-      );
-    }
     await domain.moveCard(
       parsed.data.cardId,
-      { toListId: parsed.data.toListId, index: parsed.data.index },
+      { toListId: parsed.data.toListId, index: parsed.data.index, lossReason: parsed.data.lossReason },
       sessionActor(session)
     );
     revalidatePath("/board", "layout");

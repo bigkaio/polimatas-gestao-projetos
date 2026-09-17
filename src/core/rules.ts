@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { phoneIssue } from "@/lib/whatsapp";
 
 /**
  * Schemas das regras de automação e compliance (seção 5.3/5.4 do backlog).
@@ -25,6 +26,7 @@ export const CONDITION_FIELDS = [
   "card.due_date",
   "card.amount",
   "card.client_name",
+  "card.lead_source",
   "card.loss_reason",
   "card.open_tasks",
   "from_list",
@@ -81,6 +83,31 @@ const notifyAction = z.object({
   user_id: z.string().uuid().optional(),
   message: z.string().min(1),
 });
+/** Quem recebe o WhatsApp: número fixo, o cliente do card ou alguém da equipe. */
+export const WHATSAPP_TARGETS = ["number", "client", "assignee", "creator", "user"] as const;
+export type WhatsAppTarget = (typeof WHATSAPP_TARGETS)[number];
+
+const whatsAppAction = z.object({
+  type: z.literal("send_whatsapp"),
+  // `default` mantém válidas as regras gravadas antes de existir o destino.
+  to: z.enum(WHATSAPP_TARGETS).default("number"),
+  /** Para `number`: DDD + número (o DDI 55 é assumido quando falta). */
+  number: z.string().trim().optional(),
+  /** Para `user`: a pessoa da equipe, que precisa ter WhatsApp no perfil. */
+  user_id: z.string().uuid().optional(),
+  message: z.string().min(1, "Escreva a mensagem do WhatsApp."),
+});
+export type WhatsAppAction = z.infer<typeof whatsAppAction>;
+
+/** O que falta na ação de WhatsApp para ela ter destino, ou `null` se está completa. */
+export function whatsAppActionIssue(action: WhatsAppAction): string | null {
+  if (action.to === "number") {
+    const issue = phoneIssue(action.number ?? "");
+    if (issue) return `Número do WhatsApp: ${issue}`;
+  }
+  if (action.to === "user" && !action.user_id) return "Escolha quem da equipe recebe o WhatsApp.";
+  return null;
+}
 const moveAction = z.object({
   type: z.literal("move_card"),
   target_list: z.string().min(1),
@@ -123,6 +150,7 @@ const setFieldAction = z.object({
 
 export const actionSchema = z.discriminatedUnion("type", [
   notifyAction,
+  whatsAppAction,
   moveAction,
   assignAction,
   dueDateAction,
@@ -138,7 +166,16 @@ export const automationSchema = z.object({
   enabled: z.boolean().default(true),
   trigger: triggerSchema,
   conditions: conditionGroupSchema,
-  actions: z.array(actionSchema).min(1, "Adicione pelo menos uma ação."),
+  actions: z
+    .array(actionSchema)
+    .min(1, "Adicione pelo menos uma ação.")
+    // discriminatedUnion não aceita refine nos membros; a checagem fica aqui.
+    .superRefine((actions, ctx) => {
+      actions.forEach((a, i) => {
+        const issue = a.type === "send_whatsapp" ? whatsAppActionIssue(a) : null;
+        if (issue) ctx.addIssue({ code: z.ZodIssueCode.custom, message: issue, path: [i] });
+      });
+    }),
 });
 export type AutomationInput = z.infer<typeof automationSchema>;
 

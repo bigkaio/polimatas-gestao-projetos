@@ -26,6 +26,7 @@ const TRIGGER_LABELS: Record<(typeof TRIGGER_TYPES)[number], string> = {
 
 const ACTION_LABELS: Record<AutomationAction["type"], string> = {
   notify_user: "Notificar alguém",
+  send_whatsapp: "Enviar WhatsApp",
   move_card: "Mover o card",
   assign_user: "Definir o responsável",
   set_due_date: "Definir o prazo",
@@ -39,6 +40,8 @@ function defaultAction(type: AutomationAction["type"], lists: ListRef[]): Automa
   switch (type) {
     case "notify_user":
       return { type, target: "assignee", message: "O card {{card.title}} precisa da sua atenção." };
+    case "send_whatsapp":
+      return { type, to: "number", number: "", message: "O card {{card.title}} precisa da sua atenção." };
     case "move_card":
       return { type, target_list: lists[0]?.stageKey ?? "" };
     case "assign_user":
@@ -76,7 +79,7 @@ export function AutomationBuilder({
   onCancel,
 }: {
   lists: ListRef[];
-  users: { id: string; name: string }[];
+  users: { id: string; name: string; hasWhatsApp?: boolean }[];
   initial: AutomationInput | null;
   isSystem: boolean;
   onSave: (rule: AutomationInput) => Promise<void>;
@@ -486,6 +489,60 @@ export function AutomationBuilder({
                       dia(s)
                     </label>
                   </>
+                ) : null}
+                {action.type === "send_whatsapp" ? (
+                  <div className="w-full space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-gray-400">para</span>
+                      <select
+                        value={action.to}
+                        onChange={(e) => updateAction(i, { to: e.target.value } as never)}
+                        className={inputCls}
+                      >
+                        <option value="user">alguém da equipe Polímatas</option>
+                        <option value="assignee">o responsável do card</option>
+                        <option value="creator">quem criou o card</option>
+                        <option value="client">o cliente do card (telefone do card)</option>
+                        <option value="number">um número fixo</option>
+                      </select>
+                      {action.to === "number" ? (
+                        <input
+                          value={action.number ?? ""}
+                          onChange={(e) => updateAction(i, { number: e.target.value } as never)}
+                          placeholder="DDD + número, ex.: 61999990000"
+                          inputMode="tel"
+                          className={clsx(inputCls, "w-56")}
+                        />
+                      ) : null}
+                      {action.to === "user" ? (
+                        <select
+                          value={action.user_id ?? ""}
+                          onChange={(e) => updateAction(i, { user_id: e.target.value || undefined } as never)}
+                          className={inputCls}
+                        >
+                          <option value="">Escolha…</option>
+                          {users.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.name}
+                              {u.hasWhatsApp === false ? " (sem WhatsApp cadastrado)" : ""}
+                            </option>
+                          ))}
+                        </select>
+                      ) : null}
+                    </div>
+                    {action.to !== "number" && action.to !== "client" ? (
+                      <p className="text-xs text-gray-500">
+                        O WhatsApp de cada pessoa é cadastrado em Configurações; sem ele a ação é pulada.
+                      </p>
+                    ) : null}
+                    <textarea
+                      value={action.message}
+                      onChange={(e) => updateAction(i, { message: e.target.value } as never)}
+                      placeholder="Mensagem — pode usar {{card.title}}, {{card.client_name}} e {{card.amount_brl}}; *negrito* como no WhatsApp"
+                      rows={4}
+                      className={clsx(inputCls, "w-full")}
+                    />
+                  </div>
                 ) : null}
                 {action.type === "add_comment" ? (
                   <input

@@ -22,7 +22,7 @@ export function AddMember() {
   const { toast } = useToast();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", role: "member" as Role });
+  const [form, setForm] = useState({ name: "", email: "", role: "member" as Role, phone: "" });
   const [created, setCreated] = useState<Created | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -33,7 +33,7 @@ export function AddMember() {
       if (!res.ok) return toast(res.error, "error");
       setCreated(res.data ?? null);
       setCopied(false);
-      setForm({ name: "", email: "", role: "member" });
+      setForm({ name: "", email: "", role: "member", phone: "" });
       setOpen(false);
       router.refresh();
     });
@@ -103,7 +103,7 @@ export function AddMember() {
       <p className="text-sm text-gray-400">
         O sistema gera uma senha temporária; no primeiro acesso a pessoa define a própria.
       </p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+      <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto]">
         <label className="text-sm text-gray-300">
           Nome
           <input
@@ -138,6 +138,17 @@ export function AddMember() {
               </option>
             ))}
           </select>
+        </label>
+        <label className="text-sm text-gray-300">
+          WhatsApp <span className="text-gray-500">(opcional)</span>
+          <input
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            placeholder="DDD + número"
+            inputMode="tel"
+            className={`mt-1 ${inputCls}`}
+            autoComplete="off"
+          />
         </label>
       </div>
       <div className="mt-4 flex gap-2">

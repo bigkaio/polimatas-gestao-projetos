@@ -70,6 +70,23 @@ describe("comentários no card", () => {
     expect(await prisma.comment.findUnique({ where: { id: comment.id } })).toBeNull();
   });
 
+  it("o papel que vale é o do banco, não o da sessão", async () => {
+    const card = await anyCard();
+    const member = await actorWithRole("member");
+    const other = await actorWithRole("sales");
+    const comment = await domain.createComment(card.id, "[teste] sessão velha", member);
+
+    // sessão antiga diz "admin", mas a pessoa foi rebaixada para vendas
+    const stale = { id: other.id, role: "admin" as const };
+    await expect(domain.deleteComment(comment.id, stale)).rejects.toBeInstanceOf(PermissionError);
+
+    // e o contrário: promovida a admin, modera mesmo com a sessão dizendo "sales"
+    await prisma.profile.update({ where: { id: other.id }, data: { role: "admin" } });
+    invalidatePermissionCache(other.id);
+    await domain.deleteComment(comment.id, { id: other.id, role: "sales" });
+    expect(await prisma.comment.findUnique({ where: { id: comment.id } })).toBeNull();
+  });
+
   it("o admin pode desligar `card.comment` para um papel", async () => {
     const card = await anyCard();
     const sales = await actorWithRole("sales");

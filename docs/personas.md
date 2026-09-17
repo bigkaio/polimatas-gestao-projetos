@@ -22,6 +22,7 @@ imediatamente na camada de domínio — não é filtro de interface.
 | Criar/mover card de projeto | `board.projects.mutate` | ❌ | ❌ | ✅ | ✅ |
 | Editar card em que é responsável | `card.edit.own` | ✅ | ✅ | ✅ | ✅ |
 | Editar card de outra pessoa | `card.edit.any` | ✅ | ✅ | ✅ | ✅ |
+| Excluir card (definitivo) | `card.delete` | ❌ | ❌ | ✅ | ✅ |
 | Comentar nos cards | `card.comment` | ✅ | ✅ | ✅ | ✅ |
 | Criar, renomear e excluir colunas | `lists.manage` | ❌ | ❌ | ✅ | ✅ |
 | Criar/editar/remover tarefa | `task.manage` | ✅ | ✅ | ✅ | ✅ |

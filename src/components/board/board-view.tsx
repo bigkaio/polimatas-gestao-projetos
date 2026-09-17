@@ -10,8 +10,10 @@ import {
   PointerSensor,
   TouchSensor,
   closestCorners,
+  pointerWithin,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
@@ -198,6 +200,32 @@ export function BoardView({
   const findCard = (id: string) => cards.find((c) => c.id === id) ?? null;
   const listOf = (id: string) => board.lists.find((l) => l.id === id) ?? null;
 
+  /**
+   * O destino é a coluna sob o ponteiro. Só `closestCorners` falhava com
+   * coluna vazia: os cantos dela ficam no topo e no rodapé da coluna inteira,
+   * e os cards da coluna vizinha ganhavam — o card "caía" em Revisão quando
+   * era solto em Em andamento. O teclado não tem ponteiro e segue no
+   * `closestCorners`.
+   */
+  const collisionDetection: CollisionDetection = (args) => {
+    const within = pointerWithin(args);
+    const isList = (id: unknown) => board.lists.some((l) => l.id === id);
+
+    const overCard = within.find((c) => !isList(c.id));
+    if (overCard) return [overCard];
+
+    const overList = within.find((c) => isList(c.id));
+    if (!overList) return closestCorners(args);
+
+    // Dentro da coluna, mas fora de um card: o card mais próximo DESTA coluna
+    // define a posição; coluna vazia devolve a própria coluna.
+    const sameColumn = args.droppableContainers.filter(
+      (d) => d.id === overList.id || findCard(String(d.id))?.listId === overList.id
+    );
+    const nearest = closestCorners({ ...args, droppableContainers: sameColumn });
+    return nearest.length > 0 ? [nearest[0]!] : [overList];
+  };
+
   const onDragStart = (event: DragStartEvent) => {
     draggingRef.current = true;
     setActiveCard(findCard(String(event.active.id)));
@@ -347,7 +375,7 @@ export function BoardView({
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collisionDetection}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
         onDragCancel={() => {

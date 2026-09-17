@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { isActiveUser } from "@/core/permission-store";
 
 export const dynamic = "force-dynamic";
 
 /** Alimenta o sino (US-35) por polling — adaptação sem Supabase Realtime. */
 export async function GET() {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  // Conta desativada some do sino também, não só das páginas (o cookie dura 7 dias).
+  if (!session || !(await isActiveUser(session.userId)))
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const notifications = await prisma.notification.findMany({
     where: { userId: session.userId },

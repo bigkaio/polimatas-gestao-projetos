@@ -8,9 +8,12 @@ import {
   triggerSchema,
   type AutomationAction,
   type Trigger,
+  type WhatsAppAction,
 } from "./rules";
+import { whatsAppTargetLabel } from "@/lib/humanize";
 import { ComplianceError } from "./errors";
 import { MAX_AUTOMATION_DEPTH, type AutomationContext, type DomainEvent } from "./events";
+import { sendWhatsAppText, whatsAppConfig } from "@/lib/whatsapp";
 
 /**
  * AutomationEngine (seção 5.3): Gatilho → Condições → Ações.
@@ -102,6 +105,19 @@ export async function runAutomation(
 
   const conditions = conditionGroupSchema.safeParse(automation.conditions);
   if (!conditions.success || !evaluateGroup(conditions.data, ctx)) {
+    // O gatilho bateu e a condição não: fica registrado, senão a regra "some"
+    // sem pista em Execuções. Gatilhos temporais ficam de fora — gravar com o
+    // eventKey do dia travaria a reavaliação se a condição passasse a valer.
+    if (!options.simulate && !event.eventKey) {
+      await record(
+        automation.id,
+        card.id,
+        "skipped",
+        null,
+        event,
+        conditions.success ? "Condições não atendidas para este card." : "Condições malformadas."
+      );
+    }
     return { status: "skipped", outcomes: [] };
   }
 
@@ -202,6 +218,8 @@ function describe(action: AutomationAction, ctx: EvalContext): string {
   switch (action.type) {
     case "notify_user":
       return `Notificaria (${action.target}): "${renderTemplate(action.message, ctx)}"`;
+    case "send_whatsapp":
+      return `Enviaria WhatsApp para ${whatsAppTargetLabel(action, [])}: "${renderTemplate(action.message, ctx)}"`;
     case "move_card":
       return `Moveria o card para "${action.target_list}"`;
     case "assign_user":
@@ -218,6 +236,32 @@ function describe(action: AutomationAction, ctx: EvalContext): string {
       return `Criaria um card no Pipeline de Projetos ("${action.target_list}")`;
     case "set_field":
       return `Alteraria o campo ${action.field} para "${action.value}"`;
+  }
+}
+
+/**
+ * Número que recebe o WhatsApp da ação, ou o motivo de não haver um. Sem
+ * destino a ação é pulada — como `notify_user` num card sem responsável.
+ */
+async function whatsAppRecipient(
+  action: WhatsAppAction,
+  card: LoadedCard
+): Promise<{ number: string | null; reason: string }> {
+  switch (action.to) {
+    case "number":
+      return { number: action.number ?? null, reason: "A ação não tem número de destino." };
+    case "client":
+      return { number: card.clientPhone, reason: "O card não tem telefone do cliente." };
+    case "assignee":
+    case "creator":
+    case "user": {
+      const id =
+        action.to === "assignee" ? card.assigneeId : action.to === "creator" ? card.createdBy : action.user_id;
+      if (!id) return { number: null, reason: "Card sem responsável." };
+      const person = await prisma.profile.findUnique({ where: { id }, select: { name: true, phone: true } });
+      if (!person) return { number: null, reason: "Pessoa não encontrada." };
+      return { number: person.phone, reason: `${person.name} não tem WhatsApp cadastrado.` };
+    }
   }
 }
 
@@ -248,6 +292,20 @@ async function executeAction(
         data: Array.from(targets).map((userId) => ({ userId, cardId: card.id, message })),
       });
       return { action: action.type, status: "success" };
+    }
+
+    case "send_whatsapp": {
+      // Sem as variáveis EVOLUTION_* o servidor não tem por onde enviar: a
+      // ação é pulada (e não erro) para a regra continuar válida em ambientes
+      // sem WhatsApp, como o de testes.
+      if (!whatsAppConfig())
+        return { action: action.type, status: "skipped", detail: "WhatsApp não configurado no servidor." };
+      const to = await whatsAppRecipient(action, card);
+      if (!to.number) return { action: action.type, status: "skipped", detail: to.reason };
+      const result = await sendWhatsAppText(to.number, renderTemplate(action.message, ctx));
+      return result.ok
+        ? { action: action.type, status: "success" }
+        : { action: action.type, status: "error", detail: result.error };
     }
 
     case "move_card": {

@@ -5,6 +5,10 @@ export default defineConfig({
   test: {
     environment: "node",
     setupFiles: ["tests/setup.ts"],
+    // Só a pasta de testes: `evolution/db` pertence ao Postgres do container
+    // e a varredura padrão quebra com "permission denied".
+    include: ["tests/**/*.test.ts"],
+    exclude: ["**/node_modules/**", "evolution/**"],
     fileParallelism: false,
     testTimeout: 30_000,
   },

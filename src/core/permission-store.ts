@@ -94,6 +94,13 @@ export async function canManageTasks(
   return can(perms, "task.manage") && canEditCardWith(perms, boardType, card, userId);
 }
 
+/** Excluir card: exige a capacidade e poder mexer no quadro onde ele está. */
+export async function canDeleteCard(userId: string, boardType: CardType): Promise<boolean> {
+  const perms = await loadUserPermissions(userId);
+  if (!perms) return false;
+  return can(perms, "card.delete") && canMutateBoardWith(perms, boardType);
+}
+
 export async function canCompleteTask(userId: string): Promise<boolean> {
   return hasCapability(userId, "task.complete");
 }
