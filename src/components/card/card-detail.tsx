@@ -179,10 +179,10 @@ export function CardDetail({
   const isOpp = card.type === "opportunity";
 
   return (
-    <div className="mx-auto w-full max-w-3xl rounded-2xl border border-white/10 bg-[#0f1016] shadow-2xl">
-      <div className="flex items-start justify-between gap-4 border-b border-white/5 p-6 pb-4">
+    <div className="mx-auto w-full max-w-3xl rounded-2xl border border-line/10 bg-surface-2 shadow-2xl">
+      <div className="flex items-start justify-between gap-4 border-b border-line/5 p-6 pb-4">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400">
+          <p className="text-xs font-semibold uppercase tracking-widest text-accent">
             {isOpp ? "Oportunidade" : "Projeto"} · {card.listName}
           </p>
           <input
@@ -191,13 +191,13 @@ export function CardDetail({
             onBlur={(e) => {
               if (e.target.value !== card.title) void save({ title: e.target.value });
             }}
-            className="mt-1 w-full rounded-md border border-transparent px-1 py-0.5 text-xl font-bold hover:border-white/10 focus:border-cyan-400 focus:outline-none"
+            className="mt-1 w-full rounded-md border border-transparent px-1 py-0.5 text-xl font-bold hover:border-line/10 focus:border-accent focus:outline-none"
           />
         </div>
         <Link
           href={`/board/${card.boardKey}`}
           aria-label="Fechar"
-          className="rounded-lg p-2 text-gray-500 hover:bg-white/10 hover:text-gray-300"
+          className="rounded-lg p-2 text-fg-4 hover:bg-tint/10 hover:text-fg-2"
         >
           ✕
         </Link>
@@ -209,7 +209,7 @@ export function CardDetail({
           {card.source ? (
             <Link
               href={`/board/${card.source.boardKey}/card/${card.source.id}`}
-              className="block rounded-xl border border-cyan-400/25 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-200 hover:bg-cyan-400/15"
+              className="block rounded-xl border border-accent/25 bg-accent/10 px-4 py-3 text-sm text-accent hover:bg-accent-solid-hover/15"
             >
               ⚡ Origem: venda <strong>{card.source.title}</strong> — clique para abrir a negociação
             </Link>
@@ -217,17 +217,17 @@ export function CardDetail({
           {card.spawned ? (
             <Link
               href={`/board/${card.spawned.boardKey}/card/${card.spawned.id}`}
-              className="block rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-300 hover:bg-emerald-400/20"
+              className="block rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success hover:bg-success-solid-hover/20"
             >
               🚀 Projeto gerado: <strong>{card.spawned.title}</strong> — acompanhar a execução
             </Link>
           ) : null}
 
           {/* Dados do cliente (US-12/US-17) */}
-          <section className="rounded-xl border border-white/10 p-4">
-            <h3 className="text-sm font-semibold text-gray-200">Cliente</h3>
+          <section className="rounded-xl border border-line/10 p-4">
+            <h3 className="text-sm font-semibold text-fg-2">Cliente</h3>
             <div className="mt-2 grid gap-3 sm:grid-cols-2">
-              <label className="text-xs font-medium text-gray-400">
+              <label className="text-xs font-medium text-fg-3">
                 Nome
                 <input
                   defaultValue={card.clientName ?? ""}
@@ -235,10 +235,10 @@ export function CardDetail({
                     if (e.target.value !== (card.clientName ?? ""))
                       void save({ clientName: e.target.value || null });
                   }}
-                  className="mt-1 w-full rounded-md border border-white/15 px-2 py-1.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-line/15 px-2 py-1.5 text-sm text-fg focus:border-accent focus:outline-none"
                 />
               </label>
-              <label className="text-xs font-medium text-gray-400">
+              <label className="text-xs font-medium text-fg-3">
                 E-mail
                 <input
                   defaultValue={card.clientEmail ?? ""}
@@ -246,10 +246,10 @@ export function CardDetail({
                     if (e.target.value !== (card.clientEmail ?? ""))
                       void save({ clientEmail: e.target.value || null });
                   }}
-                  className="mt-1 w-full rounded-md border border-white/15 px-2 py-1.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-line/15 px-2 py-1.5 text-sm text-fg focus:border-accent focus:outline-none"
                 />
               </label>
-              <label className="text-xs font-medium text-gray-400">
+              <label className="text-xs font-medium text-fg-3">
                 Telefone
                 <input
                   defaultValue={card.clientPhone ?? ""}
@@ -257,11 +257,11 @@ export function CardDetail({
                     if (e.target.value !== (card.clientPhone ?? ""))
                       void save({ clientPhone: e.target.value || null });
                   }}
-                  className="mt-1 w-full rounded-md border border-white/15 px-2 py-1.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-line/15 px-2 py-1.5 text-sm text-fg focus:border-accent focus:outline-none"
                 />
               </label>
               {isOpp ? (
-                <label className="text-xs font-medium text-gray-400">
+                <label className="text-xs font-medium text-fg-3">
                   Origem do lead
                   <div className="mt-1 flex gap-2">
                     <select
@@ -274,7 +274,7 @@ export function CardDetail({
                         setOtherSource(false);
                         void save({ leadSource: e.target.value || null });
                       }}
-                      className="w-full rounded-md border border-white/15 bg-[#0b0f19] px-2 py-1.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                      className="w-full rounded-md border border-line/15 bg-field px-2 py-1.5 text-sm text-fg focus:border-accent focus:outline-none"
                     >
                       <option value="">Não informada</option>
                       {LEAD_SOURCES.map((s) => (
@@ -294,13 +294,13 @@ export function CardDetail({
                           if (e.target.value.trim() !== (card.leadSource ?? ""))
                             void save({ leadSource: e.target.value || null });
                         }}
-                        className="w-full rounded-md border border-white/15 px-2 py-1.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                        className="w-full rounded-md border border-line/15 px-2 py-1.5 text-sm text-fg focus:border-accent focus:outline-none"
                       />
                     ) : null}
                   </div>
                 </label>
               ) : null}
-              <label className="text-xs font-medium text-gray-400">
+              <label className="text-xs font-medium text-fg-3">
                 Valor {isOpp ? "estimado" : "do contrato"} (R$)
                 <input
                   defaultValue={
@@ -316,14 +316,14 @@ export function CardDetail({
                     const prev = card.amount === null ? null : Number(card.amount);
                     if (next !== prev) void save({ amount: e.target.value || null });
                   }}
-                  className="mt-1 w-full rounded-md border border-white/15 px-2 py-1.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-line/15 px-2 py-1.5 text-sm text-fg focus:border-accent focus:outline-none"
                 />
               </label>
             </div>
           </section>
 
           <section>
-            <h3 className="text-sm font-semibold text-gray-200">Descrição</h3>
+            <h3 className="text-sm font-semibold text-fg-2">Descrição</h3>
             <textarea
               defaultValue={card.description ?? ""}
               rows={3}
@@ -332,12 +332,12 @@ export function CardDetail({
                 if (e.target.value !== (card.description ?? ""))
                   void save({ description: e.target.value || null });
               }}
-              className="mt-2 w-full rounded-xl border border-white/10 px-3 py-2 text-sm focus:border-cyan-400 focus:outline-none"
+              className="mt-2 w-full rounded-xl border border-line/10 px-3 py-2 text-sm focus:border-accent focus:outline-none"
             />
           </section>
 
           {card.lossReason ? (
-            <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">
               <strong>Motivo da perda:</strong> {card.lossReason}
             </p>
           ) : null}
@@ -345,19 +345,19 @@ export function CardDetail({
           {/* Checklist de tarefas (US-18/US-19) */}
           <section>
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-200">
+              <h3 className="text-sm font-semibold text-fg-2">
                 Checklist{" "}
                 {tasks.length > 0 ? (
-                  <span className="font-normal text-gray-500">
+                  <span className="font-normal text-fg-4">
                     {doneCount}/{tasks.length}
                   </span>
                 ) : null}
               </h3>
             </div>
             {tasks.length > 0 ? (
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-tint/10">
                 <div
-                  className="h-full rounded-full bg-emerald-500 transition-all"
+                  className="h-full rounded-full bg-success-solid transition-all"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -366,7 +366,7 @@ export function CardDetail({
               {tasks.map((task, i) => {
                 const status = dueStatus(task.dueDate, task.done);
                 return (
-                  <li key={task.id} className="group rounded-lg border border-white/10 px-3 py-2">
+                  <li key={task.id} className="group rounded-lg border border-line/10 px-3 py-2">
                     <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
@@ -394,8 +394,8 @@ export function CardDetail({
                           }
                         }}
                         className={clsx(
-                          "min-w-0 flex-1 rounded border border-transparent px-1 py-0.5 text-sm hover:border-white/10 focus:border-cyan-400 focus:outline-none",
-                          task.done && "text-gray-500 line-through",
+                          "min-w-0 flex-1 rounded border border-transparent px-1 py-0.5 text-sm hover:border-line/10 focus:border-accent focus:outline-none",
+                          task.done && "text-fg-4 line-through",
                         )}
                       />
                       <span className="flex shrink-0 opacity-0 transition group-focus-within:opacity-100 group-hover:opacity-100">
@@ -403,7 +403,7 @@ export function CardDetail({
                           type="button"
                           aria-label="Subir"
                           onClick={() => void moveTask(i, -1)}
-                          className="px-1 text-gray-500 hover:text-gray-200"
+                          className="px-1 text-fg-4 hover:text-fg-2"
                         >
                           ↑
                         </button>
@@ -411,7 +411,7 @@ export function CardDetail({
                           type="button"
                           aria-label="Descer"
                           onClick={() => void moveTask(i, 1)}
-                          className="px-1 text-gray-500 hover:text-gray-200"
+                          className="px-1 text-fg-4 hover:text-fg-2"
                         >
                           ↓
                         </button>
@@ -423,7 +423,7 @@ export function CardDetail({
                             if (!r.ok) toast(r.error, "error");
                             startTransition(() => router.refresh());
                           }}
-                          className="px-1 text-gray-500 hover:text-red-400"
+                          className="px-1 text-fg-4 hover:text-danger"
                         >
                           ✕
                         </button>
@@ -445,9 +445,9 @@ export function CardDetail({
                           startTransition(() => router.refresh());
                         }}
                         className={clsx(
-                          "shrink-0 rounded border border-white/10 px-1.5 py-1 text-xs",
-                          status === "late" && "border-red-400/40 text-red-400",
-                          status === "soon" && "border-amber-400/40 text-amber-300",
+                          "shrink-0 rounded border border-line/10 px-1.5 py-1 text-xs",
+                          status === "late" && "border-danger/40 text-danger",
+                          status === "soon" && "border-warning/40 text-warning",
                         )}
                       />
                       <select
@@ -460,7 +460,7 @@ export function CardDetail({
                           });
                           if (!r.ok) toast(r.error, "error");
                         }}
-                        className="min-w-0 max-w-[10rem] flex-1 truncate rounded border border-white/10 px-1.5 py-1 text-xs"
+                        className="min-w-0 max-w-[10rem] flex-1 truncate rounded border border-line/10 px-1.5 py-1 text-xs"
                       >
                         <option value="">Ninguém</option>
                         {users.map((u) => (
@@ -475,18 +475,18 @@ export function CardDetail({
               })}
             </ul>
 
-            <div className="mt-3 flex flex-wrap items-end gap-2 rounded-xl bg-[#141413]/5 p-3">
-              <label className="min-w-40 flex-1 text-xs font-medium text-gray-400">
+            <div className="mt-3 flex flex-wrap items-end gap-2 rounded-xl bg-tint/5 p-3">
+              <label className="min-w-40 flex-1 text-xs font-medium text-fg-3">
                 Nova tarefa
                 <input
                   value={newTask.title}
                   onChange={(e) => setNewTask((t) => ({ ...t, title: e.target.value }))}
                   onKeyDown={(e) => e.key === "Enter" && void addTask()}
                   placeholder="O que precisa ser feito?"
-                  className="mt-1 w-full rounded-md border border-white/15 px-2 py-1.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-line/15 px-2 py-1.5 text-sm text-fg focus:border-accent focus:outline-none"
                 />
               </label>
-              <label className="text-xs font-medium text-gray-400">
+              <label className="text-xs font-medium text-fg-3">
                 Prazo (obrigatório)
                 <input
                   ref={taskDueRef}
@@ -494,19 +494,19 @@ export function CardDetail({
                   value={newTask.dueDate}
                   onChange={(e) => setNewTask((t) => ({ ...t, dueDate: e.target.value }))}
                   className={clsx(
-                    "mt-1 w-full rounded-md border px-2 py-1.5 text-sm text-white focus:outline-none",
+                    "mt-1 w-full rounded-md border px-2 py-1.5 text-sm text-fg focus:outline-none",
                     highlightDue
-                      ? "border-red-400 ring-2 ring-red-500/30"
-                      : "border-white/15 focus:border-cyan-400",
+                      ? "border-danger ring-2 ring-red-500/30"
+                      : "border-line/15 focus:border-accent",
                   )}
                 />
               </label>
-              <label className="text-xs font-medium text-gray-400">
+              <label className="text-xs font-medium text-fg-3">
                 Responsável
                 <select
                   value={newTask.assigneeId}
                   onChange={(e) => setNewTask((t) => ({ ...t, assigneeId: e.target.value }))}
-                  className="mt-1 w-full min-w-0 max-w-full truncate rounded-md border border-white/15 px-2 py-1.5 text-sm text-white"
+                  className="mt-1 w-full min-w-0 max-w-full truncate rounded-md border border-line/15 px-2 py-1.5 text-sm text-fg"
                 >
                   <option value="">Ninguém</option>
                   {users.map((u) => (
@@ -519,7 +519,7 @@ export function CardDetail({
               <button
                 type="button"
                 onClick={() => void addTask()}
-                className="rounded-full bg-cyan-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-cyan-400"
+                className="rounded-full bg-accent-solid px-3 py-1.5 text-sm font-medium text-accent-fg hover:bg-accent-solid-hover"
               >
                 Adicionar
               </button>
@@ -536,14 +536,14 @@ export function CardDetail({
 
         {/* Coluna lateral */}
         <aside className="min-w-0 space-y-4">
-          <label className="block text-xs font-medium text-gray-400">
+          <label className="block text-xs font-medium text-fg-3">
             Status
             <select
               value={card.listId}
               disabled={!canMove}
               onChange={(e) => void changeList(e.target.value)}
               title={canMove ? undefined : "Seu papel não move cards neste quadro."}
-              className="mt-1 w-full min-w-0 max-w-full truncate rounded-lg border border-white/15 bg-[#0b0f19] px-2 py-1.5 text-sm text-gray-100 focus:border-cyan-400 focus:outline-none disabled:opacity-40"
+              className="mt-1 w-full min-w-0 max-w-full truncate rounded-lg border border-line/15 bg-field px-2 py-1.5 text-sm text-fg focus:border-accent focus:outline-none disabled:opacity-40"
             >
               {lists.map((l) => (
                 <option key={l.id} value={l.id}>
@@ -552,12 +552,12 @@ export function CardDetail({
               ))}
             </select>
           </label>
-          <label className="block text-xs font-medium text-gray-400">
+          <label className="block text-xs font-medium text-fg-3">
             Responsável
             <select
               defaultValue={card.assigneeId ?? ""}
               onChange={(e) => void save({ assigneeId: e.target.value || null })}
-              className="mt-1 w-full min-w-0 max-w-full truncate rounded-lg border border-white/15 px-2 py-2 text-sm text-white"
+              className="mt-1 w-full min-w-0 max-w-full truncate rounded-lg border border-line/15 px-2 py-2 text-sm text-fg"
             >
               <option value="">Sem responsável</option>
               {users.map((u) => (
@@ -567,23 +567,23 @@ export function CardDetail({
               ))}
             </select>
           </label>
-          <label className="block text-xs font-medium text-gray-400">
+          <label className="block text-xs font-medium text-fg-3">
             Prazo
             <input
               type="date"
               defaultValue={card.dueDate ?? ""}
               lang="pt-BR"
               onChange={(e) => void save({ dueDate: e.target.value || null })}
-              className="mt-1 w-full rounded-lg border border-white/15 px-2 py-2 text-sm text-white"
+              className="mt-1 w-full rounded-lg border border-line/15 px-2 py-2 text-sm text-fg"
             />
           </label>
           {card.dueDate ? (
             <p
               className={clsx(
                 "rounded-lg px-3 py-2 text-xs font-medium",
-                dueStatus(card.dueDate) === "late" && "bg-red-500/15 text-red-300",
-                dueStatus(card.dueDate) === "soon" && "bg-amber-400/15 text-amber-300",
-                dueStatus(card.dueDate) === "ok" && "bg-white/10 text-gray-300",
+                dueStatus(card.dueDate) === "late" && "bg-danger/15 text-danger",
+                dueStatus(card.dueDate) === "soon" && "bg-warning/15 text-warning",
+                dueStatus(card.dueDate) === "ok" && "bg-tint/10 text-fg-2",
               )}
             >
               {dueStatus(card.dueDate) === "late"
@@ -592,16 +592,16 @@ export function CardDetail({
             </p>
           ) : null}
           {card.amount ? (
-            <p className="rounded-lg bg-emerald-400/10 px-3 py-2 text-sm font-semibold text-emerald-300">
+            <p className="rounded-lg bg-success/10 px-3 py-2 text-sm font-semibold text-success">
               {brl(card.amount)}
             </p>
           ) : null}
 
           {canDelete ? (
-            <div className="border-t border-white/10 pt-4">
+            <div className="border-t border-line/10 pt-4">
               {confirmingDelete ? (
-                <div className="space-y-2 rounded-lg border border-red-400/30 bg-red-500/5 p-3">
-                  <p className="text-xs text-red-200">
+                <div className="space-y-2 rounded-lg border border-danger/30 bg-danger/5 p-3">
+                  <p className="text-xs text-danger">
                     Excluir <strong>{card.title}</strong> de vez? Tarefas, comentários e histórico
                     vão junto. Isso não tem volta.
                     {card.spawned ? " O projeto gerado continua existindo." : ""}
@@ -611,7 +611,7 @@ export function CardDetail({
                       type="button"
                       disabled={deleting}
                       onClick={() => void remove()}
-                      className="rounded-full bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-400 disabled:opacity-50"
+                      className="rounded-full bg-danger-solid px-3 py-1.5 text-xs font-semibold text-danger-fg hover:bg-danger-solid-hover disabled:opacity-50"
                     >
                       {deleting ? "Excluindo…" : "Excluir de vez"}
                     </button>
@@ -619,7 +619,7 @@ export function CardDetail({
                       type="button"
                       disabled={deleting}
                       onClick={() => setConfirmingDelete(false)}
-                      className="rounded-full px-3 py-1.5 text-xs text-gray-300 hover:bg-white/10"
+                      className="rounded-full px-3 py-1.5 text-xs text-fg-2 hover:bg-tint/10"
                     >
                       Cancelar
                     </button>
@@ -629,7 +629,7 @@ export function CardDetail({
                 <button
                   type="button"
                   onClick={() => setConfirmingDelete(true)}
-                  className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-400 hover:bg-red-500/10"
+                  className="w-full rounded-lg px-3 py-2 text-left text-xs text-danger hover:bg-danger/10"
                 >
                   🗑 Excluir card
                 </button>

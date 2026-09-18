@@ -20,8 +20,8 @@ export function SettingsLink() {
       aria-label="Configurações"
       aria-current={active ? "page" : undefined}
       className={clsx(
-        "rounded-lg p-2 transition hover:bg-white/10",
-        active ? "text-cyan-400" : "text-gray-300 hover:text-white"
+        "rounded-lg p-2 transition hover:bg-tint/10",
+        active ? "text-accent" : "text-fg-2 hover:text-fg"
       )}
     >
       <svg

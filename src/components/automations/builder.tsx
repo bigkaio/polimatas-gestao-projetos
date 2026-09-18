@@ -12,6 +12,8 @@ import {
   type Trigger,
 } from "@/core/rules";
 import { fieldLabel, humanizeRule, operatorLabel, type ListRef } from "@/lib/humanize";
+import { unknownVars, type SampleCard } from "@/lib/template-vars";
+import { MessageField } from "./message-field";
 
 const TRIGGER_LABELS: Record<(typeof TRIGGER_TYPES)[number], string> = {
   "card.created": "Um card for criado",
@@ -41,7 +43,12 @@ function defaultAction(type: AutomationAction["type"], lists: ListRef[]): Automa
     case "notify_user":
       return { type, target: "assignee", message: "O card {{card.title}} precisa da sua atenção." };
     case "send_whatsapp":
-      return { type, to: "number", number: "", message: "O card {{card.title}} precisa da sua atenção." };
+      return {
+        type,
+        to: "number",
+        number: "",
+        message: "O card {{card.title}} precisa da sua atenção.",
+      };
     case "move_card":
       return { type, target_list: lists[0]?.stageKey ?? "" };
     case "assign_user":
@@ -57,7 +64,14 @@ function defaultAction(type: AutomationAction["type"], lists: ListRef[]): Automa
         type,
         target_board: "projects",
         target_list: "backlog",
-        inherit: ["client_name", "client_email", "client_phone", "amount", "description", "assignee_id"],
+        inherit: [
+          "client_name",
+          "client_email",
+          "client_phone",
+          "amount",
+          "description",
+          "assignee_id",
+        ],
         title_template: "{{client_name}} — {{card.title}}",
         link_back: true,
       };
@@ -67,12 +81,13 @@ function defaultAction(type: AutomationAction["type"], lists: ListRef[]): Automa
 }
 
 const inputCls =
-  "rounded-lg border border-white/15 px-2 py-1.5 text-sm focus:border-cyan-400 focus:outline-none";
+  "rounded-lg border border-line/15 px-2 py-1.5 text-sm focus:border-accent focus:outline-none";
 
 /** Construtor de regras sem código, em 3 passos (US-25). */
 export function AutomationBuilder({
   lists,
   users,
+  sample,
   initial,
   isSystem,
   onSave,
@@ -80,6 +95,8 @@ export function AutomationBuilder({
 }: {
   lists: ListRef[];
   users: { id: string; name: string; hasWhatsApp?: boolean }[];
+  /** Card de verdade usado na pré-visualização das mensagens. */
+  sample: SampleCard | null;
   initial: AutomationInput | null;
   isSystem: boolean;
   onSave: (rule: AutomationInput) => Promise<void>;
@@ -94,7 +111,7 @@ export function AutomationBuilder({
 
   const boardLists = useMemo(
     () => lists.filter((l) => !trigger.board || l.boardKey === trigger.board),
-    [lists, trigger.board]
+    [lists, trigger.board],
   );
 
   const preview = useMemo(() => {
@@ -105,8 +122,28 @@ export function AutomationBuilder({
     }
   }, [trigger, conditionOp, rules, actions, lists, users]);
 
+  /** Texto livre de cada ação: é onde as variáveis `{{...}}` podem aparecer. */
+  const templatesOf = (a: AutomationAction): string[] => {
+    if (a.type === "notify_user" || a.type === "send_whatsapp") return [a.message];
+    if (a.type === "add_comment") return [a.text];
+    if (a.type === "add_task") return [a.title];
+    if (a.type === "create_project_card") return [a.title_template];
+    if (a.type === "set_field") return [a.value];
+    return [];
+  };
+
+  // Variável inexistente vira texto vazio no envio: melhor barrar aqui.
+  const problemas = useMemo(() => {
+    const nomes = [...new Set(actions.flatMap(templatesOf).flatMap(unknownVars))];
+    return nomes.length > 0
+      ? [`Corrija as variáveis inexistentes: ${nomes.map((k) => `{{${k}}}`).join(", ")}`]
+      : [];
+  }, [actions]);
+
   const updateAction = (i: number, patch: Partial<AutomationAction>) =>
-    setActions((prev) => prev.map((a, j) => (j === i ? ({ ...a, ...patch } as AutomationAction) : a)));
+    setActions((prev) =>
+      prev.map((a, j) => (j === i ? ({ ...a, ...patch } as AutomationAction) : a)),
+    );
 
   const moveAction = (i: number, dir: -1 | 1) =>
     setActions((prev) => {
@@ -117,10 +154,10 @@ export function AutomationBuilder({
       return next;
     });
 
-  const stepCls = "rounded-2xl border border-white/10 bg-[#141413] p-5 shadow-sm";
+  const stepCls = "rounded-2xl border border-line/10 bg-surface p-5 shadow-sm";
   const stepTitle = (n: number, label: string) => (
     <h2 className="flex items-center gap-2 text-base font-bold">
-      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-cyan-500 text-sm text-white">
+      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-solid text-sm text-accent-fg">
         {n}
       </span>
       {label}
@@ -130,19 +167,23 @@ export function AutomationBuilder({
   return (
     <div className="mx-auto max-w-3xl space-y-4 px-4 py-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-light tracking-tight text-white">{initial ? "Editar automação" : "Nova automação"}</h1>
-        <button type="button" onClick={onCancel} className="text-sm text-gray-400 hover:underline">
+        <h1 className="text-3xl font-light tracking-tight text-fg">
+          {initial ? "Editar automação" : "Nova automação"}
+        </h1>
+        <button type="button" onClick={onCancel} className="text-sm text-fg-3 hover:underline">
           ← Voltar para a lista
         </button>
       </div>
 
-      <div className="rounded-2xl border border-cyan-400/25 bg-cyan-400/10 p-4 text-sm text-cyan-100">
-        <p className="text-xs font-semibold uppercase tracking-wide text-cyan-400">Pré-visualização</p>
+      <div className="rounded-2xl border border-accent/25 bg-accent/10 p-4 text-sm text-accent">
+        <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+          Pré-visualização
+        </p>
         <p className="mt-1">{preview}</p>
       </div>
 
       <label className="block">
-        <span className="text-sm font-medium text-gray-200">Nome da regra</span>
+        <span className="text-sm font-medium text-fg-2">Nome da regra</span>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -155,7 +196,7 @@ export function AutomationBuilder({
       <section className={stepCls}>
         {stepTitle(1, "Quando… (gatilho)")}
         {isSystem ? (
-          <p className="mt-2 rounded-lg bg-amber-400/10 px-3 py-2 text-xs text-amber-300">
+          <p className="mt-2 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
             Regra nativa: o gatilho é fixo (venda fechada). Destino, condições e campos herdados
             continuam editáveis.
           </p>
@@ -177,7 +218,10 @@ export function AutomationBuilder({
             disabled={isSystem}
             value={trigger.board ?? ""}
             onChange={(e) =>
-              setTrigger((t) => ({ ...t, board: (e.target.value || undefined) as Trigger["board"] }))
+              setTrigger((t) => ({
+                ...t,
+                board: (e.target.value || undefined) as Trigger["board"],
+              }))
             }
             className={inputCls}
           >
@@ -239,7 +283,9 @@ export function AutomationBuilder({
                 value={rule.field}
                 onChange={(e) =>
                   setRules((prev) =>
-                    prev.map((r, j) => (j === i ? { ...r, field: e.target.value as ConditionRule["field"] } : r))
+                    prev.map((r, j) =>
+                      j === i ? { ...r, field: e.target.value as ConditionRule["field"] } : r,
+                    ),
                   )
                 }
                 className={inputCls}
@@ -255,8 +301,8 @@ export function AutomationBuilder({
                 onChange={(e) =>
                   setRules((prev) =>
                     prev.map((r, j) =>
-                      j === i ? { ...r, operator: e.target.value as ConditionRule["operator"] } : r
-                    )
+                      j === i ? { ...r, operator: e.target.value as ConditionRule["operator"] } : r,
+                    ),
                   )
                 }
                 className={inputCls}
@@ -268,11 +314,15 @@ export function AutomationBuilder({
                 ))}
               </select>
               {rule.operator !== "is_empty" && rule.operator !== "is_filled" ? (
-                rule.field === "to_list" || rule.field === "from_list" || rule.field === "card.list" ? (
+                rule.field === "to_list" ||
+                rule.field === "from_list" ||
+                rule.field === "card.list" ? (
                   <select
                     value={String(rule.value ?? "")}
                     onChange={(e) =>
-                      setRules((prev) => prev.map((r, j) => (j === i ? { ...r, value: e.target.value } : r)))
+                      setRules((prev) =>
+                        prev.map((r, j) => (j === i ? { ...r, value: e.target.value } : r)),
+                      )
                     }
                     className={inputCls}
                   >
@@ -287,7 +337,9 @@ export function AutomationBuilder({
                   <select
                     value={String(rule.value ?? "")}
                     onChange={(e) =>
-                      setRules((prev) => prev.map((r, j) => (j === i ? { ...r, value: e.target.value } : r)))
+                      setRules((prev) =>
+                        prev.map((r, j) => (j === i ? { ...r, value: e.target.value } : r)),
+                      )
                     }
                     className={inputCls}
                   >
@@ -302,7 +354,9 @@ export function AutomationBuilder({
                   <select
                     value={String(rule.value ?? "")}
                     onChange={(e) =>
-                      setRules((prev) => prev.map((r, j) => (j === i ? { ...r, value: e.target.value } : r)))
+                      setRules((prev) =>
+                        prev.map((r, j) => (j === i ? { ...r, value: e.target.value } : r)),
+                      )
                     }
                     className={inputCls}
                   >
@@ -314,7 +368,9 @@ export function AutomationBuilder({
                   <input
                     value={String(rule.value ?? "")}
                     onChange={(e) =>
-                      setRules((prev) => prev.map((r, j) => (j === i ? { ...r, value: e.target.value } : r)))
+                      setRules((prev) =>
+                        prev.map((r, j) => (j === i ? { ...r, value: e.target.value } : r)),
+                      )
                     }
                     placeholder="valor"
                     className={clsx(inputCls, "w-32")}
@@ -325,7 +381,7 @@ export function AutomationBuilder({
                 type="button"
                 aria-label="Remover condição"
                 onClick={() => setRules((prev) => prev.filter((_, j) => j !== i))}
-                className="text-gray-500 hover:text-red-400"
+                className="text-fg-4 hover:text-danger"
               >
                 ✕
               </button>
@@ -334,8 +390,10 @@ export function AutomationBuilder({
         </ul>
         <button
           type="button"
-          onClick={() => setRules((prev) => [...prev, { field: "card.type", operator: "is", value: "" }])}
-          className="mt-3 text-sm font-medium text-cyan-400 hover:underline"
+          onClick={() =>
+            setRules((prev) => [...prev, { field: "card.type", operator: "is", value: "" }])
+          }
+          className="mt-3 text-sm font-medium text-accent hover:underline"
         >
           + Adicionar condição
         </button>
@@ -346,15 +404,17 @@ export function AutomationBuilder({
         {stepTitle(3, "Então… (ações, na ordem)")}
         <ul className="mt-3 space-y-3">
           {actions.map((action, i) => (
-            <li key={i} className="rounded-xl border border-white/10 p-3">
+            <li key={i} className="rounded-xl border border-line/10 p-3">
               <div className="flex items-center gap-2">
                 <select
                   value={action.type}
                   onChange={(e) =>
                     setActions((prev) =>
                       prev.map((a, j) =>
-                        j === i ? defaultAction(e.target.value as AutomationAction["type"], lists) : a
-                      )
+                        j === i
+                          ? defaultAction(e.target.value as AutomationAction["type"], lists)
+                          : a,
+                      ),
                     )
                   }
                   className={inputCls}
@@ -366,13 +426,27 @@ export function AutomationBuilder({
                   ))}
                 </select>
                 <span className="ml-auto flex gap-1">
-                  <button type="button" aria-label="Subir ação" onClick={() => moveAction(i, -1)} className="px-1 text-gray-500 hover:text-gray-200">↑</button>
-                  <button type="button" aria-label="Descer ação" onClick={() => moveAction(i, 1)} className="px-1 text-gray-500 hover:text-gray-200">↓</button>
+                  <button
+                    type="button"
+                    aria-label="Subir ação"
+                    onClick={() => moveAction(i, -1)}
+                    className="px-1 text-fg-4 hover:text-fg-2"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Descer ação"
+                    onClick={() => moveAction(i, 1)}
+                    className="px-1 text-fg-4 hover:text-fg-2"
+                  >
+                    ↓
+                  </button>
                   <button
                     type="button"
                     aria-label="Remover ação"
                     onClick={() => setActions((prev) => prev.filter((_, j) => j !== i))}
-                    className="px-1 text-gray-500 hover:text-red-400"
+                    className="px-1 text-fg-4 hover:text-danger"
                   >
                     ✕
                   </button>
@@ -406,12 +480,14 @@ export function AutomationBuilder({
                         ))}
                       </select>
                     ) : null}
-                    <input
-                      value={action.message}
-                      onChange={(e) => updateAction(i, { message: e.target.value } as never)}
-                      placeholder="Mensagem — pode usar {{card.title}}"
-                      className={clsx(inputCls, "min-w-64 flex-1")}
-                    />
+                    <div className="min-w-64 flex-1">
+                      <MessageField
+                        value={action.message}
+                        onChange={(v) => updateAction(i, { message: v } as never)}
+                        placeholder="Mensagem da notificação"
+                        sample={sample}
+                      />
+                    </div>
                   </>
                 ) : null}
                 {action.type === "move_card" ? (
@@ -483,7 +559,9 @@ export function AutomationBuilder({
                         type="number"
                         min={0}
                         value={action.due_in_days}
-                        onChange={(e) => updateAction(i, { due_in_days: Number(e.target.value) } as never)}
+                        onChange={(e) =>
+                          updateAction(i, { due_in_days: Number(e.target.value) } as never)
+                        }
                         className={clsx(inputCls, "w-16")}
                       />
                       dia(s)
@@ -493,7 +571,7 @@ export function AutomationBuilder({
                 {action.type === "send_whatsapp" ? (
                   <div className="w-full space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-gray-400">para</span>
+                      <span className="text-fg-3">para</span>
                       <select
                         value={action.to}
                         onChange={(e) => updateAction(i, { to: e.target.value } as never)}
@@ -517,7 +595,9 @@ export function AutomationBuilder({
                       {action.to === "user" ? (
                         <select
                           value={action.user_id ?? ""}
-                          onChange={(e) => updateAction(i, { user_id: e.target.value || undefined } as never)}
+                          onChange={(e) =>
+                            updateAction(i, { user_id: e.target.value || undefined } as never)
+                          }
                           className={inputCls}
                         >
                           <option value="">Escolha…</option>
@@ -531,25 +611,26 @@ export function AutomationBuilder({
                       ) : null}
                     </div>
                     {action.to !== "number" && action.to !== "client" ? (
-                      <p className="text-xs text-gray-500">
-                        O WhatsApp de cada pessoa é cadastrado em Configurações; sem ele a ação é pulada.
+                      <p className="text-xs text-fg-4">
+                        O WhatsApp de cada pessoa é cadastrado em Configurações; sem ele a ação é
+                        pulada.
                       </p>
                     ) : null}
-                    <textarea
+                    <MessageField
                       value={action.message}
-                      onChange={(e) => updateAction(i, { message: e.target.value } as never)}
-                      placeholder="Mensagem — pode usar {{card.title}}, {{card.client_name}} e {{card.amount_brl}}; *negrito* como no WhatsApp"
+                      onChange={(v) => updateAction(i, { message: v } as never)}
+                      placeholder="Mensagem — *negrito* como no WhatsApp"
                       rows={4}
-                      className={clsx(inputCls, "w-full")}
+                      sample={sample}
                     />
                   </div>
                 ) : null}
                 {action.type === "add_comment" ? (
-                  <input
+                  <MessageField
                     value={action.text}
-                    onChange={(e) => updateAction(i, { text: e.target.value } as never)}
+                    onChange={(v) => updateAction(i, { text: v } as never)}
                     placeholder="Texto do comentário"
-                    className={clsx(inputCls, "flex-1")}
+                    sample={sample}
                   />
                 ) : null}
                 {action.type === "create_project_card" ? (
@@ -570,14 +651,19 @@ export function AutomationBuilder({
                           ))}
                       </select>
                       com o título
-                      <input
-                        value={action.title_template}
-                        onChange={(e) => updateAction(i, { title_template: e.target.value } as never)}
-                        className={clsx(inputCls, "min-w-56 flex-1")}
-                      />
+                      <div className="min-w-56 flex-1">
+                        <MessageField
+                          value={action.title_template}
+                          onChange={(v) => updateAction(i, { title_template: v } as never)}
+                          placeholder="Título do card de projeto"
+                          sample={sample}
+                        />
+                      </div>
                     </div>
-                    <fieldset className="flex flex-wrap gap-3 text-xs text-gray-300">
-                      <legend className="text-xs font-medium text-gray-400">Campos herdados da venda:</legend>
+                    <fieldset className="flex flex-wrap gap-3 text-xs text-fg-2">
+                      <legend className="text-xs font-medium text-fg-3">
+                        Campos herdados da venda:
+                      </legend>
                       {(
                         [
                           ["client_name", "nome do cliente"],
@@ -619,12 +705,14 @@ export function AutomationBuilder({
                       <option value="client_name">nome do cliente</option>
                       <option value="amount">valor</option>
                     </select>
-                    <input
-                      value={action.value}
-                      onChange={(e) => updateAction(i, { value: e.target.value } as never)}
-                      placeholder="novo valor"
-                      className={clsx(inputCls, "flex-1")}
-                    />
+                    <div className="flex-1">
+                      <MessageField
+                        value={action.value}
+                        onChange={(v) => updateAction(i, { value: v } as never)}
+                        placeholder="novo valor"
+                        sample={sample}
+                      />
+                    </div>
                   </>
                 ) : null}
               </div>
@@ -634,23 +722,29 @@ export function AutomationBuilder({
         <button
           type="button"
           onClick={() => setActions((prev) => [...prev, defaultAction("notify_user", lists)])}
-          className="mt-3 text-sm font-medium text-cyan-400 hover:underline"
+          className="mt-3 text-sm font-medium text-accent hover:underline"
         >
           + Adicionar ação
         </button>
       </section>
 
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {problemas.length > 0 ? (
+          <p className="mr-auto rounded-md bg-warning/10 px-3 py-1.5 text-xs text-warning">
+            {problemas[0]}
+          </p>
+        ) : null}
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-full px-4 py-2 text-sm text-gray-300 hover:bg-[#141413]/10"
+          className="rounded-full px-4 py-2 text-sm text-fg-2 hover:bg-tint/10"
         >
           Cancelar
         </button>
         <button
           type="button"
-          disabled={saving || !name.trim() || actions.length === 0}
+          disabled={saving || !name.trim() || actions.length === 0 || problemas.length > 0}
+          title={problemas[0]}
           onClick={async () => {
             setSaving(true);
             await onSave({
@@ -662,7 +756,7 @@ export function AutomationBuilder({
             });
             setSaving(false);
           }}
-          className="rounded-full bg-cyan-500 px-5 py-2 text-sm font-medium text-white hover:bg-cyan-400 disabled:opacity-50"
+          className="rounded-full bg-accent-solid px-5 py-2 text-sm font-medium text-accent-fg hover:bg-accent-solid-hover disabled:opacity-50"
         >
           {saving ? "Salvando…" : "Salvar automação"}
         </button>

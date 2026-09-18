@@ -18,7 +18,7 @@ const EMPTY = {
 };
 
 const fieldCls =
-  "w-full rounded-md border border-white/15 bg-[#0b0f19] px-2 py-1.5 text-sm text-gray-100 focus:border-cyan-400 focus:outline-none";
+  "w-full rounded-md border border-line/15 bg-field px-2 py-1.5 text-sm text-fg focus:border-accent focus:outline-none";
 
 /**
  * Criação inline no rodapé da lista (US-07/US-12). Abre com o mínimo —
@@ -49,7 +49,7 @@ export function AddCard({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-400 hover:bg-white/10 hover:text-gray-200"
+        className="w-full rounded-lg px-3 py-2 text-left text-sm text-fg-3 hover:bg-tint/10 hover:text-fg-2"
       >
         + Adicionar
       </button>
@@ -83,14 +83,14 @@ export function AddCard({
   };
 
   return (
-    <div className="space-y-2 rounded-lg border border-white/10 bg-[#1F2937] p-2 shadow">
+    <div className="space-y-2 rounded-lg border border-line/10 bg-surface-2 p-2 shadow">
       <input
         autoFocus
         value={title}
         onChange={(e) => set({ title: e.target.value })}
         onKeyDown={(e) => e.key === "Enter" && void submit()}
         placeholder={isOpportunity ? "Título da oportunidade" : "Título do card"}
-        className="w-full rounded-md border border-white/15 px-2 py-1.5 text-sm focus:border-cyan-400 focus:outline-none"
+        className="w-full rounded-md border border-line/15 px-2 py-1.5 text-sm focus:border-accent focus:outline-none"
       />
       {isOpportunity ? (
         <input
@@ -98,7 +98,7 @@ export function AddCard({
           onChange={(e) => set({ client: e.target.value })}
           onKeyDown={(e) => e.key === "Enter" && void submit()}
           placeholder="Nome do cliente (obrigatório)"
-          className="w-full rounded-md border border-white/15 px-2 py-1.5 text-sm focus:border-cyan-400 focus:outline-none"
+          className="w-full rounded-md border border-line/15 px-2 py-1.5 text-sm focus:border-accent focus:outline-none"
         />
       ) : null}
       {isOpportunity ? (
@@ -131,7 +131,7 @@ export function AddCard({
         </div>
       ) : null}
       {more ? (
-        <div className="space-y-2 border-t border-white/10 pt-2">
+        <div className="space-y-2 border-t border-line/10 pt-2">
           <select
             value={form.assigneeId}
             onChange={(e) => set({ assigneeId: e.target.value })}
@@ -177,21 +177,21 @@ export function AddCard({
           type="button"
           onClick={() => void submit()}
           disabled={saving}
-          className="rounded-full bg-cyan-500 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+          className="rounded-full bg-accent-solid px-3 py-1.5 text-sm font-medium text-accent-fg disabled:opacity-60"
         >
           {saving ? "Criando…" : "Criar"}
         </button>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded-md px-3 py-1.5 text-sm text-gray-400 hover:bg-white/10"
+          className="rounded-md px-3 py-1.5 text-sm text-fg-3 hover:bg-tint/10"
         >
           Cancelar
         </button>
         <button
           type="button"
           onClick={() => setMore((m) => !m)}
-          className="ml-auto text-xs text-gray-400 hover:text-cyan-400"
+          className="ml-auto text-xs text-fg-3 hover:text-accent"
         >
           {more ? "Menos campos" : "Mais campos"}
         </button>

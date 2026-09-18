@@ -23,12 +23,22 @@ import { sendWhatsAppText, whatsAppConfig } from "@/lib/whatsapp";
  * - Idempotência por (automation_id, card_id, event_key)
  */
 
-type LoadedCard = Card & { list: List; tasks: Task[]; board: { key: "sales" | "projects" } };
+type LoadedCard = Card & {
+  list: List;
+  tasks: Task[];
+  board: { key: "sales" | "projects" };
+  assignee: { name: string } | null;
+};
 
 async function loadCard(cardId: string): Promise<LoadedCard | null> {
   return prisma.card.findUnique({
     where: { id: cardId },
-    include: { list: true, tasks: true, board: { select: { key: true } } },
+    include: {
+      list: true,
+      tasks: true,
+      board: { select: { key: true } },
+      assignee: { select: { name: true } },
+    },
   }) as Promise<LoadedCard | null>;
 }
 
@@ -73,13 +83,20 @@ export async function runAutomation(
   cardInput: LoadedCard | string,
   event: DomainEvent,
   depth = 0,
-  options: { simulate?: boolean } = {}
+  options: { simulate?: boolean } = {},
 ): Promise<{ status: string; outcomes: ActionOutcome[] }> {
   const card = typeof cardInput === "string" ? await loadCard(cardInput) : cardInput;
   if (!card) return { status: "error", outcomes: [] };
 
   if (depth > MAX_AUTOMATION_DEPTH) {
-    await record(automation.id, card.id, "error", null, event, "Encadeamento máximo de automações atingido.");
+    await record(
+      automation.id,
+      card.id,
+      "error",
+      null,
+      event,
+      "Encadeamento máximo de automações atingido.",
+    );
     return { status: "error", outcomes: [] };
   }
 
@@ -98,7 +115,10 @@ export async function runAutomation(
     ? await prisma.list.findUnique({ where: { id: event.toListId } })
     : card.list;
   const task = event.taskId
-    ? await prisma.task.findUnique({ where: { id: event.taskId } })
+    ? await prisma.task.findUnique({
+        where: { id: event.taskId },
+        include: { assignee: { select: { name: true } } },
+      })
     : null;
 
   const ctx = cardContext(card, { fromList, toList, task });
@@ -115,7 +135,7 @@ export async function runAutomation(
         "skipped",
         null,
         event,
-        conditions.success ? "Condições não atendidas para este card." : "Condições malformadas."
+        conditions.success ? "Condições não atendidas para este card." : "Condições malformadas.",
       );
     }
     return { status: "skipped", outcomes: [] };
@@ -136,7 +156,11 @@ export async function runAutomation(
       continue;
     }
     if (options.simulate) {
-      outcomes.push({ action: parsed.data.type, status: "success", detail: describe(parsed.data, ctx) });
+      outcomes.push({
+        action: parsed.data.type,
+        status: "success",
+        detail: describe(parsed.data, ctx),
+      });
       continue;
     }
     try {
@@ -148,7 +172,11 @@ export async function runAutomation(
       if (result.action === "create_project_card" && result.status === "skipped") break;
     } catch (err) {
       if (err instanceof ComplianceError) {
-        outcomes.push({ action: parsed.data.type, status: "blocked_by_compliance", detail: err.message });
+        outcomes.push({
+          action: parsed.data.type,
+          status: "blocked_by_compliance",
+          detail: err.message,
+        });
       } else {
         outcomes.push({
           action: parsed.data.type,
@@ -162,7 +190,7 @@ export async function runAutomation(
   const hasError = outcomes.some((o) => o.status === "error");
   const hasBlocked = outcomes.some((o) => o.status === "blocked_by_compliance");
   const duplicateSkip = outcomes.some(
-    (o) => o.action === "create_project_card" && o.status === "skipped"
+    (o) => o.action === "create_project_card" && o.status === "skipped",
   );
   const allSkipped = outcomes.length > 0 && outcomes.every((o) => o.status === "skipped");
   const status = options.simulate
@@ -186,7 +214,7 @@ export async function runAutomation(
         .filter((o) => o.status !== "success")
         .map((o) => `${o.action}: ${o.detail ?? o.status}`)
         .join(" | ") || null,
-      outcomes
+      outcomes,
     );
   }
   return { status, outcomes };
@@ -199,7 +227,7 @@ async function record(
   eventKey: string | null,
   event: DomainEvent,
   error: string | null = null,
-  outcomes: ActionOutcome[] = []
+  outcomes: ActionOutcome[] = [],
 ): Promise<void> {
   await prisma.automationRun.create({
     data: {
@@ -245,7 +273,7 @@ function describe(action: AutomationAction, ctx: EvalContext): string {
  */
 async function whatsAppRecipient(
   action: WhatsAppAction,
-  card: LoadedCard
+  card: LoadedCard,
 ): Promise<{ number: string | null; reason: string }> {
   switch (action.to) {
     case "number":
@@ -256,9 +284,16 @@ async function whatsAppRecipient(
     case "creator":
     case "user": {
       const id =
-        action.to === "assignee" ? card.assigneeId : action.to === "creator" ? card.createdBy : action.user_id;
+        action.to === "assignee"
+          ? card.assigneeId
+          : action.to === "creator"
+            ? card.createdBy
+            : action.user_id;
       if (!id) return { number: null, reason: "Card sem responsável." };
-      const person = await prisma.profile.findUnique({ where: { id }, select: { name: true, phone: true } });
+      const person = await prisma.profile.findUnique({
+        where: { id },
+        select: { name: true, phone: true },
+      });
       if (!person) return { number: null, reason: "Pessoa não encontrada." };
       return { number: person.phone, reason: `${person.name} não tem WhatsApp cadastrado.` };
     }
@@ -270,7 +305,7 @@ async function executeAction(
   card: LoadedCard,
   ctx: EvalContext,
   event: DomainEvent,
-  auto: AutomationContext
+  auto: AutomationContext,
 ): Promise<ActionOutcome> {
   // Import tardio para quebrar o ciclo domínio ⇄ motor.
   const domain = await import("./domain");
@@ -287,7 +322,11 @@ async function executeAction(
         all.forEach((p) => targets.add(p.id));
       }
       if (targets.size === 0)
-        return { action: action.type, status: "skipped", detail: "Sem destinatário (card sem responsável)." };
+        return {
+          action: action.type,
+          status: "skipped",
+          detail: "Sem destinatário (card sem responsável).",
+        };
       await prisma.notification.createMany({
         data: Array.from(targets).map((userId) => ({ userId, cardId: card.id, message })),
       });
@@ -299,7 +338,11 @@ async function executeAction(
       // ação é pulada (e não erro) para a regra continuar válida em ambientes
       // sem WhatsApp, como o de testes.
       if (!whatsAppConfig())
-        return { action: action.type, status: "skipped", detail: "WhatsApp não configurado no servidor." };
+        return {
+          action: action.type,
+          status: "skipped",
+          detail: "WhatsApp não configurado no servidor.",
+        };
       const to = await whatsAppRecipient(action, card);
       if (!to.number) return { action: action.type, status: "skipped", detail: to.reason };
       const result = await sendWhatsAppText(to.number, renderTemplate(action.message, ctx));
@@ -312,7 +355,8 @@ async function executeAction(
       const target = await prisma.list.findFirst({
         where: { boardId: card.boardId, stageKey: action.target_list },
       });
-      if (!target) return { action: action.type, status: "error", detail: "Lista de destino não existe." };
+      if (!target)
+        return { action: action.type, status: "error", detail: "Lista de destino não existe." };
       if (target.id === card.listId)
         return { action: action.type, status: "skipped", detail: "Card já está na lista." };
       await domain.moveCard(card.id, { toListId: target.id }, null, auto);
@@ -342,7 +386,7 @@ async function executeAction(
           assigneeId: action.assignee === "card_assignee" ? card.assigneeId : null,
         },
         null,
-        auto
+        auto,
       );
       return { action: action.type, status: "success" };
     }
@@ -377,7 +421,11 @@ async function executeAction(
           })
         : null;
       if (!board || !list)
-        return { action: action.type, status: "error", detail: "Quadro/lista de projetos não encontrado." };
+        return {
+          action: action.type,
+          status: "error",
+          detail: "Quadro/lista de projetos não encontrado.",
+        };
 
       const inherit = new Set(action.inherit);
       const title = renderTemplate(action.title_template, {
@@ -403,14 +451,14 @@ async function executeAction(
         },
         null,
         auto,
-        { creationNote: `Criado automaticamente pela venda #${card.id.slice(0, 8)}` }
+        { creationNote: `Criado automaticamente pela venda #${card.id.slice(0, 8)}` },
       );
 
       await domain.addComment(
         card.id,
         `Projeto gerado no Pipeline de Projetos: ${project.title}`,
         null,
-        auto
+        auto,
       );
       return { action: action.type, status: "success" };
     }

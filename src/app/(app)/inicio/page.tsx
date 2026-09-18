@@ -124,11 +124,11 @@ export default async function DashboardPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <header>
-        <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400">Visão geral</p>
-        <h1 className="text-3xl font-light tracking-tight text-white">
+        <p className="text-xs font-semibold uppercase tracking-widest text-accent">Visão geral</p>
+        <h1 className="text-3xl font-light tracking-tight text-fg">
           Olá, {session.name.split(" ")[0]}
         </h1>
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-fg-3">
           Como estão as vendas e os projetos agora. {usuarios} pessoas no time.
         </p>
       </header>
@@ -157,7 +157,7 @@ export default async function DashboardPage() {
         />
       </section>
 
-      <h2 className="mt-8 text-xs font-semibold uppercase tracking-widest text-gray-500">Vendas</h2>
+      <h2 className="mt-8 text-xs font-semibold uppercase tracking-widest text-fg-4">Vendas</h2>
       <div className="mt-3 grid gap-4 lg:grid-cols-2">
         <ChartCard
           title="Funil de vendas"
@@ -194,7 +194,7 @@ export default async function DashboardPage() {
         </ChartCard>
       </div>
 
-      <h2 className="mt-8 text-xs font-semibold uppercase tracking-widest text-gray-500">
+      <h2 className="mt-8 text-xs font-semibold uppercase tracking-widest text-fg-4">
         Projetos
       </h2>
       <section className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

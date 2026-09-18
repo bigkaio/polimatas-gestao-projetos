@@ -161,14 +161,23 @@ export const actionSchema = z.discriminatedUnion("type", [
 ]);
 export type AutomationAction = z.infer<typeof actionSchema>;
 
-export const automationSchema = z.object({
+/**
+ * Formato de uma regra. `automationReadSchema` é a leitura: valida a ESTRUTURA
+ * do que está gravado, para a tela conseguir descrever e abrir a regra.
+ * `automationSchema` acrescenta as exigências de conteúdo e vale na GRAVAÇÃO —
+ * assim uma regra antiga com número de WhatsApp incompleto ainda abre no
+ * construtor (é lá que se corrige), em vez de virar "formato inválido".
+ */
+export const automationReadSchema = z.object({
   name: z.string().min(1, "Dê um nome à regra."),
   enabled: z.boolean().default(true),
   trigger: triggerSchema,
   conditions: conditionGroupSchema,
-  actions: z
-    .array(actionSchema)
-    .min(1, "Adicione pelo menos uma ação.")
+  actions: z.array(actionSchema).min(1, "Adicione pelo menos uma ação."),
+});
+
+export const automationSchema = automationReadSchema.extend({
+  actions: automationReadSchema.shape.actions
     // discriminatedUnion não aceita refine nos membros; a checagem fica aqui.
     .superRefine((actions, ctx) => {
       actions.forEach((a, i) => {

@@ -5,19 +5,19 @@
  * no CSS final.
  */
 export const LIST_COLORS = {
-  slate: { label: "Cinza", dot: "bg-slate-400", bar: "bg-slate-400/60", text: "text-slate-300" },
-  cyan: { label: "Ciano", dot: "bg-cyan-400", bar: "bg-cyan-400/60", text: "text-cyan-300" },
-  blue: { label: "Azul", dot: "bg-blue-400", bar: "bg-blue-400/60", text: "text-blue-300" },
-  violet: { label: "Roxo", dot: "bg-violet-400", bar: "bg-violet-400/60", text: "text-violet-300" },
+  slate: { label: "Cinza", dot: "bg-slate-400", bar: "bg-slate-400/60", text: "text-slate-700 dark:text-slate-300" },
+  cyan: { label: "Ciano", dot: "bg-cyan-400", bar: "bg-cyan-400/60", text: "text-cyan-700 dark:text-cyan-300" },
+  blue: { label: "Azul", dot: "bg-blue-400", bar: "bg-blue-400/60", text: "text-blue-700 dark:text-blue-300" },
+  violet: { label: "Roxo", dot: "bg-violet-400", bar: "bg-violet-400/60", text: "text-violet-700 dark:text-violet-300" },
   emerald: {
     label: "Verde",
     dot: "bg-emerald-400",
     bar: "bg-emerald-400/60",
-    text: "text-emerald-300",
+    text: "text-emerald-700 dark:text-emerald-300",
   },
-  amber: { label: "Âmbar", dot: "bg-amber-400", bar: "bg-amber-400/60", text: "text-amber-300" },
-  rose: { label: "Vermelho", dot: "bg-rose-400", bar: "bg-rose-400/60", text: "text-rose-300" },
-  pink: { label: "Rosa", dot: "bg-pink-400", bar: "bg-pink-400/60", text: "text-pink-300" },
+  amber: { label: "Âmbar", dot: "bg-amber-400", bar: "bg-amber-400/60", text: "text-amber-700 dark:text-amber-300" },
+  rose: { label: "Vermelho", dot: "bg-rose-400", bar: "bg-rose-400/60", text: "text-rose-700 dark:text-rose-300" },
+  pink: { label: "Rosa", dot: "bg-pink-400", bar: "bg-pink-400/60", text: "text-pink-700 dark:text-pink-300" },
 } as const;
 
 export type ListColor = keyof typeof LIST_COLORS;

@@ -71,26 +71,26 @@ function CapabilityRow({
   onChange: (v: boolean | null) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 border-t border-white/5 py-2 first:border-0">
+    <div className="flex flex-wrap items-center gap-3 border-t border-line/5 py-2 first:border-0">
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-gray-200">
+        <p className="text-sm text-fg-2">
           {cap.label}
           {custom ? (
-            <span className="ml-2 rounded-full border border-amber-400/40 px-2 py-0.5 text-[11px] text-amber-300">
+            <span className="ml-2 rounded-full border border-warning/40 px-2 py-0.5 text-[11px] text-warning">
               personalizado
             </span>
           ) : (
-            <span className="ml-2 text-[11px] text-gray-600">modelo da função</span>
+            <span className="ml-2 text-[11px] text-fg-5">modelo da função</span>
           )}
         </p>
-        <p className="text-xs text-gray-500">{cap.help}</p>
+        <p className="text-xs text-fg-4">{cap.help}</p>
       </div>
       {custom ? (
         <button
           type="button"
           disabled={disabled}
           onClick={() => onChange(null)}
-          className="text-xs text-gray-500 hover:text-cyan-400 disabled:opacity-40"
+          className="text-xs text-fg-4 hover:text-accent disabled:opacity-40"
           title={`Voltar ao padrão da função (${padrao ? "permitido" : "negado"})`}
         >
           voltar ao padrão
@@ -105,12 +105,12 @@ function CapabilityRow({
         onClick={() => onChange(!value)}
         className={clsx(
           "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition disabled:opacity-40",
-          value ? "border-cyan-400/40 bg-cyan-500" : "border-white/15 bg-white/10"
+          value ? "border-accent/40 bg-accent-solid" : "border-line/15 bg-tint/10"
         )}
       >
         <span
           className={clsx(
-            "inline-block h-4 w-4 rounded-full bg-black transition",
+            "inline-block h-4 w-4 rounded-full bg-accent-fg transition",
             value ? "translate-x-6" : "translate-x-1"
           )}
         />
@@ -225,14 +225,14 @@ export function SettingsPage({
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <h1 className="text-3xl font-light tracking-tight text-white">Configurações</h1>
-      <p className="max-w-3xl text-sm text-gray-400">
+      <h1 className="text-3xl font-light tracking-tight text-fg">Configurações</h1>
+      <p className="max-w-3xl text-sm text-fg-3">
         As permissões são <strong>de cada pessoa</strong>. A função serve de modelo: o que você não
         personalizar segue o padrão dela. Tudo vale no <strong>servidor</strong> — desligar aqui não
         esconde o botão, recusa a ação.
       </p>
 
-      <div className="mt-6 flex gap-1 border-b border-white/10">
+      <div className="mt-6 flex gap-1 border-b border-line/10">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -241,8 +241,8 @@ export function SettingsPage({
             className={clsx(
               "-mb-px rounded-t-lg border-b-2 px-4 py-2 text-sm font-medium transition",
               tab === t.key
-                ? "border-cyan-400 text-cyan-400"
-                : "border-transparent text-gray-400 hover:text-white"
+                ? "border-accent text-accent"
+                : "border-transparent text-fg-3 hover:text-fg"
             )}
           >
             {t.label}
@@ -258,10 +258,10 @@ export function SettingsPage({
             const expandido = aberto === user.id;
             const personalizadas = user.customized.length;
             return (
-              <div key={user.id} className="rounded-2xl border border-white/10 bg-[#141413] p-4">
+              <div key={user.id} className="rounded-2xl border border-line/10 bg-surface p-4">
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="flex flex-wrap items-center font-medium text-white">
+                    <p className="flex flex-wrap items-center font-medium text-fg">
                       <input
                         key={user.name}
                         defaultValue={user.name}
@@ -276,31 +276,31 @@ export function SettingsPage({
                           }
                         }}
                         title="Clique para renomear; Enter ou sair do campo salva"
-                        className="min-w-0 max-w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 font-medium text-white hover:border-white/15 focus:border-cyan-400 focus:outline-none disabled:opacity-40"
+                        className="min-w-0 max-w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 font-medium text-fg hover:border-line/15 focus:border-accent focus:outline-none disabled:opacity-40"
                       />
                       {eu && (
-                        <span className="ml-2 rounded-full border border-white/15 px-2 py-0.5 text-xs text-gray-400">
+                        <span className="ml-2 rounded-full border border-line/15 px-2 py-0.5 text-xs text-fg-3">
                           você
                         </span>
                       )}
                       {!user.active && (
-                        <span className="ml-2 rounded-full border border-white/20 px-2 py-0.5 text-xs text-gray-400">
+                        <span className="ml-2 rounded-full border border-line/20 px-2 py-0.5 text-xs text-fg-3">
                           inativo
                         </span>
                       )}
                       {user.mustChangePassword && (
                         <span
                           title="Ainda não fez o primeiro acesso para trocar a senha temporária."
-                          className="ml-2 rounded-full border border-amber-400/30 px-2 py-0.5 text-xs text-amber-300"
+                          className="ml-2 rounded-full border border-warning/30 px-2 py-0.5 text-xs text-warning"
                         >
                           aguardando primeiro acesso
                         </span>
                       )}
                     </p>
-                    <p className="truncate text-sm text-gray-400">
+                    <p className="truncate text-sm text-fg-3">
                       {user.email}
                       {personalizadas > 0 ? (
-                        <span className="ml-2 text-amber-300/80">
+                        <span className="ml-2 text-warning/80">
                           · {personalizadas} permissão(ões) personalizada(s)
                         </span>
                       ) : null}
@@ -317,14 +317,14 @@ export function SettingsPage({
                     placeholder="WhatsApp (DDD + número)"
                     inputMode="tel"
                     title="Recebe as automações 'Enviar WhatsApp' dirigidas a esta pessoa"
-                    className="w-52 rounded-lg border border-white/15 bg-[#141413] px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:border-cyan-400 focus:outline-none disabled:opacity-40"
+                    className="w-52 rounded-lg border border-line/15 bg-surface px-3 py-2 text-sm text-fg-2 placeholder:text-fg-5 focus:border-accent focus:outline-none disabled:opacity-40"
                   />
                   <select
                     value={user.role}
                     disabled={pending || eu}
                     onChange={(e) => trocarFuncao(user, e.target.value as Role)}
                     title="Função — define o modelo de permissões da pessoa"
-                    className="min-w-0 max-w-[10rem] truncate rounded-lg border border-white/15 bg-[#141413] px-3 py-2 text-sm text-gray-200 focus:border-cyan-400 focus:outline-none disabled:opacity-40"
+                    className="min-w-0 max-w-[10rem] truncate rounded-lg border border-line/15 bg-surface px-3 py-2 text-sm text-fg-2 focus:border-accent focus:outline-none disabled:opacity-40"
                   >
                     {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
                       <option key={r} value={r}>
@@ -335,7 +335,7 @@ export function SettingsPage({
                   <button
                     type="button"
                     onClick={() => setAberto(expandido ? null : user.id)}
-                    className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-gray-300 hover:bg-white/10"
+                    className="rounded-full border border-line/15 px-3 py-1.5 text-sm text-fg-2 hover:bg-tint/10"
                   >
                     {expandido ? "Fechar" : "Permissões"}
                   </button>
@@ -346,7 +346,7 @@ export function SettingsPage({
                         disabled={pending}
                         onClick={() => desativar(user)}
                         title="Perde o acesso; cards, comentários e histórico ficam com o nome dela."
-                        className="rounded-full px-3 py-1.5 text-sm text-amber-300 hover:bg-amber-400/10 disabled:opacity-40"
+                        className="rounded-full px-3 py-1.5 text-sm text-warning hover:bg-warning/10 disabled:opacity-40"
                       >
                         Desativar
                       </button>
@@ -355,7 +355,7 @@ export function SettingsPage({
                         type="button"
                         disabled={pending}
                         onClick={() => reativar(user)}
-                        className="rounded-full px-3 py-1.5 text-sm text-emerald-300 hover:bg-emerald-400/10 disabled:opacity-40"
+                        className="rounded-full px-3 py-1.5 text-sm text-success hover:bg-success-solid-hover/10 disabled:opacity-40"
                       >
                         Reativar
                       </button>
@@ -367,7 +367,7 @@ export function SettingsPage({
                       disabled={pending}
                       onClick={() => setConfirmando(user.id)}
                       title="Esta pessoa não tem nada ligada a ela — dá para apagar de vez."
-                      className="rounded-full px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 disabled:opacity-40"
+                      className="rounded-full px-3 py-1.5 text-sm text-danger hover:bg-danger/10 disabled:opacity-40"
                     >
                       Excluir
                     </button>
@@ -375,22 +375,22 @@ export function SettingsPage({
                 </div>
 
                 {confirmando === user.id ? (
-                  <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-red-400/30 bg-red-500/5 p-3">
-                    <p className="min-w-0 flex-1 text-sm text-red-200">
+                  <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-danger/30 bg-danger/5 p-3">
+                    <p className="min-w-0 flex-1 text-sm text-danger">
                       Excluir <strong>{user.name}</strong> de vez? Isso não tem volta.
                     </p>
                     <button
                       type="button"
                       disabled={pending}
                       onClick={() => excluir(user)}
-                      className="rounded-full bg-red-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-red-400 disabled:opacity-50"
+                      className="rounded-full bg-danger-solid px-4 py-1.5 text-sm font-semibold text-danger-fg hover:bg-danger-solid-hover disabled:opacity-50"
                     >
                       Excluir
                     </button>
                     <button
                       type="button"
                       onClick={() => setConfirmando(null)}
-                      className="rounded-full px-3 py-1.5 text-sm text-gray-400 hover:bg-white/10"
+                      className="rounded-full px-3 py-1.5 text-sm text-fg-3 hover:bg-tint/10"
                     >
                       Cancelar
                     </button>
@@ -398,16 +398,16 @@ export function SettingsPage({
                 ) : null}
 
                 {expandido ? (
-                  <div className="mt-4 border-t border-white/10 pt-3">
+                  <div className="mt-4 border-t border-line/10 pt-3">
                     {eu ? (
-                      <p className="mb-3 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-xs text-amber-200">
+                      <p className="mb-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">
                         Você não altera as próprias permissões. Peça a outra pessoa que gerencia
                         usuários.
                       </p>
                     ) : null}
                     {grupos.map(([grupo, caps]) => (
                       <div key={grupo} className="mb-3">
-                        <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400">
+                        <p className="text-xs font-semibold uppercase tracking-widest text-accent">
                           {grupo}
                         </p>
                         <div className="mt-1">
@@ -429,7 +429,7 @@ export function SettingsPage({
                       type="button"
                       disabled={pending || eu || personalizadas === 0}
                       onClick={() => restaurar(user)}
-                      className="rounded-full px-3 py-1.5 text-sm text-gray-400 transition hover:bg-white/10 hover:text-white disabled:opacity-40"
+                      className="rounded-full px-3 py-1.5 text-sm text-fg-3 transition hover:bg-tint/10 hover:text-fg disabled:opacity-40"
                     >
                       Restaurar o modelo de {ROLE_LABELS[user.role]}
                     </button>
@@ -438,7 +438,7 @@ export function SettingsPage({
               </div>
             );
           })}
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-fg-4">
             Ninguém altera as próprias permissões nem desativa a própria conta, e o sistema recusa
             tirar “gerenciar usuários” da última pessoa que tem essa permissão. <strong>Desativar</strong>{" "}
             tira o acesso e preserva o histórico; <strong>Excluir</strong> só aparece para quem não
@@ -450,7 +450,7 @@ export function SettingsPage({
       {tab === "audit" && (
         <section className="mt-6">
           {audits.length === 0 ? (
-            <p className="rounded-2xl border border-white/10 bg-[#141413] p-6 text-sm text-gray-400">
+            <p className="rounded-2xl border border-line/10 bg-surface p-6 text-sm text-fg-3">
               Nenhuma alteração de permissão até agora.
             </p>
           ) : (
@@ -458,17 +458,17 @@ export function SettingsPage({
               {audits.map((a) => (
                 <li
                   key={a.id}
-                  className="flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-xl border border-white/10 bg-[#141413] px-4 py-3 text-sm"
+                  className="flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-xl border border-line/10 bg-surface px-4 py-3 text-sm"
                 >
-                  <span className="rounded-full border border-white/15 px-2 py-0.5 text-xs text-gray-400">
+                  <span className="rounded-full border border-line/15 px-2 py-0.5 text-xs text-fg-3">
                     {a.kind === "role" ? "função" : a.kind === "user" ? "cadastro" : "permissão"}
                   </span>
-                  <strong className="text-gray-200">{a.target}</strong>
-                  <span className="text-gray-400">
+                  <strong className="text-fg-2">{a.target}</strong>
+                  <span className="text-fg-3">
                     {a.before ? <>{a.before} → </> : "cadastrado como "}
-                    <strong className="text-cyan-400">{a.after}</strong>
+                    <strong className="text-accent">{a.after}</strong>
                   </span>
-                  <span className="ml-auto text-xs text-gray-500">
+                  <span className="ml-auto text-xs text-fg-4">
                     {a.actorName} · {relativeTime(a.createdAt)}
                   </span>
                 </li>

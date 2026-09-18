@@ -609,6 +609,24 @@ abertas, lista de origem/destino e dados da tarefa. **O mesmo avaliador
 | `create_project_card` | Cria o card de projeto herdando dados da venda |
 | `set_field` | Altera um campo do card |
 
+**Variáveis nas mensagens** — todo texto de ação (`notify_user`, `send_whatsapp`,
+`add_comment`, `add_task`, `create_project_card`, `set_field`) aceita `{{variável}}`,
+trocada pelo dado do card na execução (`renderTemplate`, em `conditions.ts`). O
+catálogo está em `src/lib/template-vars.ts` e alimenta os três pontos da tela:
+botões de inserção, pré-visualização com um card real e aviso de variável
+inexistente — que, sem aviso, viraria texto vazio na mensagem.
+
+| Variável | Vira |
+|---|---|
+| `{{card.title}}` | Título do card |
+| `{{card.client_name}}` (ou `{{client_name}}`) | Nome do cliente |
+| `{{card.amount_brl}}` | Valor formatado (R$ 65.000,00); `{{card.amount}}` traz o número cru |
+| `{{card.assignee_name}}` | Nome do responsável; `{{card.assignee}}` é o id, usado nas condições |
+| `{{card.due_date_br}}` | Prazo em 07/11/2026; `{{card.due_date}}` é ISO, comparável nas condições |
+| `{{card.lead_source}}` | Origem do lead |
+| `{{card.list}}`, `{{card.open_tasks}}`, `{{card.loss_reason}}` | Coluna, tarefas abertas, motivo da perda |
+| `{{task.title}}`, `{{task.due_date_br}}`, `{{task.assignee_name}}` | Da tarefa que disparou a regra |
+
 **Como uma automação executa:**
 
 1. `dispatch(evento)` carrega as automações ativas e filtra as que casam com o gatilho.

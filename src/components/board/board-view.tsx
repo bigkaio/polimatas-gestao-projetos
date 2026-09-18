@@ -75,7 +75,7 @@ function ListColumn({
       ref={setNodeRef}
       aria-label={list.name}
       className={clsx(
-        "flex h-full w-72 shrink-0 flex-col rounded-2xl bg-white/[0.04] transition",
+        "flex h-full w-72 shrink-0 flex-col rounded-2xl bg-tint/[0.04] transition",
         blocked && "opacity-40"
       )}
     >
@@ -86,21 +86,21 @@ function ListColumn({
       <header className="flex items-center justify-between px-3 pb-1 pt-2">
         <h2 className={clsx("text-sm font-semibold", LIST_COLORS[listColor(list.color, list.semantics)].text)}>
           {list.name}
-          <span className="ml-2 rounded-full bg-[#141413]/10 px-2 py-0.5 text-xs font-medium text-gray-400">
+          <span className="ml-2 rounded-full bg-tint/10 px-2 py-0.5 text-xs font-medium text-fg-3">
             {cards.length}
           </span>
         </h2>
         {showSum && sum > 0 ? (
-          <span className="text-xs font-medium text-gray-400">{brl(sum)}</span>
+          <span className="text-xs font-medium text-fg-3">{brl(sum)}</span>
         ) : null}
       </header>
       {blocked ? (
-        <p className="mx-3 mb-1 rounded-md bg-red-500/15 px-2 py-1 text-xs text-red-300">🚫 {reason}</p>
+        <p className="mx-3 mb-1 rounded-md bg-danger/15 px-2 py-1 text-xs text-danger">🚫 {reason}</p>
       ) : null}
       <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
         <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
           {cards.length === 0 && !dragging ? (
-            <p className="rounded-lg border border-dashed border-white/20 px-3 py-4 text-center text-xs text-gray-500">
+            <p className="rounded-lg border border-dashed border-line/20 px-3 py-4 text-center text-xs text-fg-4">
               Nenhum card em {list.name} — arraste um para cá ou crie o primeiro.
             </p>
           ) : null}
@@ -312,15 +312,15 @@ export function BoardView({
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
-      <div className="flex flex-wrap items-center gap-3 border-b border-white/10 bg-[#141413] px-4 py-2">
-        <h1 className="text-xl font-light text-white">{board.name}</h1>
+      <div className="flex flex-wrap items-center gap-3 border-b border-line/10 bg-surface px-4 py-2">
+        <h1 className="text-xl font-light text-fg">{board.name}</h1>
         {funnel ? (
-          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-300">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-fg-2">
             <span>
               Em negociação: <strong>{brl(funnel.openTotal)}</strong>
             </span>
             <span>
-              Fechado no mês: <strong className="text-emerald-300">{brl(funnel.wonThisMonth)}</strong>
+              Fechado no mês: <strong className="text-success">{brl(funnel.wonThisMonth)}</strong>
             </span>
             {funnel.conversion !== null ? (
               <span>
@@ -335,13 +335,13 @@ export function BoardView({
             onChange={(e) => setFilter("q", e.target.value)}
             placeholder="Buscar…"
             aria-label="Buscar cards"
-            className="w-40 rounded-lg border border-white/15 px-3 py-1.5 text-sm focus:border-cyan-400 focus:outline-none"
+            className="w-40 rounded-lg border border-line/15 px-3 py-1.5 text-sm focus:border-accent focus:outline-none"
           />
           <select
             value={assigneeFilter}
             onChange={(e) => setFilter("assignee", e.target.value)}
             aria-label="Filtrar por responsável"
-            className="rounded-lg border border-white/15 px-2 py-1.5 text-sm"
+            className="rounded-lg border border-line/15 px-2 py-1.5 text-sm"
           >
             <option value="">Todos</option>
             <option value="me">Meus cards</option>
@@ -355,7 +355,7 @@ export function BoardView({
             value={dueFilter}
             onChange={(e) => setFilter("due", e.target.value)}
             aria-label="Filtrar por prazo"
-            className="rounded-lg border border-white/15 px-2 py-1.5 text-sm"
+            className="rounded-lg border border-line/15 px-2 py-1.5 text-sm"
           >
             <option value="">Qualquer prazo</option>
             <option value="late">Atrasados</option>

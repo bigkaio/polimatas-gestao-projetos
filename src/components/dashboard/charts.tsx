@@ -6,7 +6,7 @@ import clsx from "clsx";
 /**
  * Gráficos do painel, em SVG puro — sem biblioteca externa.
  *
- * Paleta validada contra a superfície escura (#141413) com o validador do guia
+ * Paleta validada nos dois temas com o validador do guia
  * de dataviz: faixa de luminosidade, croma, contraste ≥ 3:1. Séries únicas usam
  * um tom só; as cores de status nunca aparecem sozinhas — sempre com rótulo.
  */
@@ -18,10 +18,11 @@ export const VIZ = {
   bad: "#e11d48",
 } as const;
 
-const AXIS = "#3f3f46";
+/** Eixos, halos e rótulos seguem o tema; as cores das séries valem nos dois. */
+const AXIS_CLS = "stroke-fg-5";
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="py-6 text-center text-sm text-gray-500">{children}</p>;
+  return <p className="py-6 text-center text-sm text-fg-4">{children}</p>;
 }
 
 /** Moldura comum: título, subtítulo e gráfico. */
@@ -35,9 +36,9 @@ export function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-[#141413] p-5">
-      <h2 className="text-sm font-semibold text-gray-200">{title}</h2>
-      {hint ? <p className="mt-0.5 text-xs text-gray-500">{hint}</p> : null}
+    <section className="rounded-2xl border border-line/10 bg-surface p-5">
+      <h2 className="text-sm font-semibold text-fg-2">{title}</h2>
+      {hint ? <p className="mt-0.5 text-xs text-fg-4">{hint}</p> : null}
       <div className="mt-4">{children}</div>
     </section>
   );
@@ -57,17 +58,17 @@ export function StatTile({
 }) {
   const color =
     tone === "good"
-      ? "text-emerald-300"
+      ? "text-success"
       : tone === "warn"
-        ? "text-amber-300"
+        ? "text-warning"
         : tone === "bad"
-          ? "text-rose-300"
-          : "text-white";
+          ? "text-danger"
+          : "text-fg";
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#141413] p-4">
-      <p className="text-xs font-medium text-gray-400">{label}</p>
+    <div className="rounded-2xl border border-line/10 bg-surface p-4">
+      <p className="text-xs font-medium text-fg-3">{label}</p>
       <p className={clsx("mt-1 text-2xl font-light tracking-tight", color)}>{value}</p>
-      {hint ? <p className="text-xs text-gray-500">{hint}</p> : null}
+      {hint ? <p className="text-xs text-fg-4">{hint}</p> : null}
     </div>
   );
 }
@@ -92,10 +93,10 @@ export function BarList({ data, empty }: { data: BarDatum[]; empty: string }) {
           onMouseLeave={() => setHover(null)}
           className="grid grid-cols-[minmax(0,7rem)_1fr_auto] items-center gap-3"
         >
-          <span className="truncate text-xs text-gray-400" title={d.label}>
+          <span className="truncate text-xs text-fg-3" title={d.label}>
             {d.label}
           </span>
-          <span className="relative block h-5 rounded bg-white/[0.04]">
+          <span className="relative block h-5 rounded bg-tint/[0.04]">
             <span
               className="absolute inset-y-0 left-0 rounded transition-[width]"
               style={{
@@ -105,12 +106,12 @@ export function BarList({ data, empty }: { data: BarDatum[]; empty: string }) {
               }}
             />
             {hover === i && d.note ? (
-              <span className="pointer-events-none absolute -top-7 left-2 z-10 whitespace-nowrap rounded-md border border-white/10 bg-[#0b0f19] px-2 py-1 text-xs text-gray-200 shadow-lg">
+              <span className="pointer-events-none absolute -top-7 left-2 z-10 whitespace-nowrap rounded-md border border-line/10 bg-field px-2 py-1 text-xs text-fg-2 shadow-lg">
                 {d.note}
               </span>
             ) : null}
           </span>
-          <span className="tabular-nums text-xs text-gray-300">{d.display}</span>
+          <span className="tabular-nums text-xs text-fg-2">{d.display}</span>
         </li>
       ))}
     </ul>
@@ -150,9 +151,9 @@ export function StatusBar({ segments, empty }: { segments: StatusSegment[]; empt
               className="h-2.5 w-2.5 shrink-0 rounded-full"
               style={{ background: color[s.tone] }}
             />
-            <span className="text-gray-400">{s.label}</span>
-            <strong className="tabular-nums text-gray-200">{s.value}</strong>
-            <span className="text-gray-500">({Math.round((s.value / total) * 100)}%)</span>
+            <span className="text-fg-3">{s.label}</span>
+            <strong className="tabular-nums text-fg-2">{s.value}</strong>
+            <span className="text-fg-4">({Math.round((s.value / total) * 100)}%)</span>
           </li>
         ))}
       </ul>
@@ -201,7 +202,7 @@ export function AreaTrend({ points, empty }: { points: TrendPoint[]; empty: stri
           y1={PAD.top + innerH}
           x2={W - PAD.right}
           y2={PAD.top + innerH}
-          stroke={AXIS}
+          className={AXIS_CLS}
           strokeWidth="1"
         />
         <path d={area} fill={`url(#${gradId})`} />
@@ -213,10 +214,10 @@ export function AreaTrend({ points, empty }: { points: TrendPoint[]; empty: stri
               cy={y(p.value)}
               r={active === i ? 5 : 3.5}
               fill={VIZ.series}
-              stroke="#141413"
+              className="stroke-surface"
               strokeWidth="2"
             />
-            <text x={x(i)} y={H - 8} textAnchor="middle" className="fill-gray-500 text-[10px]">
+            <text x={x(i)} y={H - 8} textAnchor="middle" className="fill-fg-4 text-[10px]">
               {p.label}
             </text>
             {/* alvo de clique maior que o marcador */}
@@ -236,14 +237,14 @@ export function AreaTrend({ points, empty }: { points: TrendPoint[]; empty: stri
             y1={PAD.top}
             x2={x(active)}
             y2={PAD.top + innerH}
-            stroke={AXIS}
+            className={AXIS_CLS}
             strokeWidth="1"
             strokeDasharray="3 3"
           />
         ) : null}
       </svg>
-      <p className="mt-1 text-center text-xs text-gray-400">
-        {points[active]!.label}: <strong className="text-gray-200">{points[active]!.display}</strong>
+      <p className="mt-1 text-center text-xs text-fg-3">
+        {points[active]!.label}: <strong className="text-fg-2">{points[active]!.display}</strong>
       </p>
     </div>
   );

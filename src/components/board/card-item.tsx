@@ -30,7 +30,7 @@ export function CardItem({
       {...attributes}
       {...listeners}
       className={clsx(
-        "rounded-xl border border-white/10 bg-[#141413] p-3 shadow-sm",
+        "rounded-xl border border-line/10 bg-surface p-3 shadow-sm",
         !disabled && "cursor-grab active:cursor-grabbing",
         isDragging && "opacity-40"
       )}
@@ -41,13 +41,13 @@ export function CardItem({
         onPointerDown={(e) => e.stopPropagation()}
         className="block"
       >
-        <p className="text-sm font-medium leading-snug text-white hover:text-cyan-400">
+        <p className="text-sm font-medium leading-snug text-fg hover:text-accent">
           {card.title}
         </p>
       </Link>
 
       {card.clientName ? (
-        <p className="mt-1 text-xs text-gray-400">{card.clientName}</p>
+        <p className="mt-1 text-xs text-fg-3">{card.clientName}</p>
       ) : null}
 
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
@@ -55,23 +55,23 @@ export function CardItem({
           <span
             className={clsx(
               "rounded-md px-1.5 py-0.5 font-medium",
-              due === "late" && "bg-red-500/15 text-red-300",
-              due === "soon" && "bg-amber-400/15 text-amber-300",
-              due === "ok" && "bg-white/10 text-gray-300"
+              due === "late" && "bg-danger/15 text-danger",
+              due === "soon" && "bg-warning/15 text-warning",
+              due === "ok" && "bg-tint/10 text-fg-2"
             )}
           >
             {dateBR(card.dueDate)}
           </span>
         ) : null}
         {card.amount ? (
-          <span className="rounded-md bg-emerald-400/10 px-1.5 py-0.5 font-medium text-emerald-300">
+          <span className="rounded-md bg-success/10 px-1.5 py-0.5 font-medium text-success">
             {brl(card.amount)}
           </span>
         ) : null}
         {card.leadSource ? (
           <span
             title="Origem do lead"
-            className="rounded-md bg-violet-400/10 px-1.5 py-0.5 font-medium text-violet-300"
+            className="rounded-md bg-info/10 px-1.5 py-0.5 font-medium text-info"
           >
             {card.leadSource}
           </span>
@@ -81,22 +81,22 @@ export function CardItem({
             className={clsx(
               "rounded-md px-1.5 py-0.5 font-medium",
               card.tasksDone === card.tasksTotal
-                ? "bg-emerald-400/10 text-emerald-300"
-                : "bg-white/10 text-gray-300"
+                ? "bg-success/10 text-success"
+                : "bg-tint/10 text-fg-2"
             )}
           >
             ☑ {card.tasksDone}/{card.tasksTotal}
           </span>
         ) : null}
         {card.sourceCardId ? (
-          <span title="Gerado automaticamente a partir de uma venda" className="text-cyan-400">
+          <span title="Gerado automaticamente a partir de uma venda" className="text-accent">
             ⚡ venda
           </span>
         ) : null}
         {card.assignee ? (
           <span
             title={card.assignee.name}
-            className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-cyan-400/15 text-[10px] font-bold text-cyan-400"
+            className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-accent/15 text-[10px] font-bold text-accent"
           >
             {initials(card.assignee.name)}
           </span>

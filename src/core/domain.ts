@@ -31,6 +31,8 @@ const CARD_INCLUDE = {
   list: true,
   tasks: true,
   board: { select: { key: true } },
+  // nome do responsável: entra nos modelos de mensagem como {{card.assignee_name}}
+  assignee: { select: { name: true } },
 } satisfies Prisma.CardInclude;
 
 async function requireCard(cardId: string) {
@@ -49,7 +51,7 @@ async function log(
   action: string,
   before: Prisma.InputJsonValue | null,
   after: Prisma.InputJsonValue | null,
-  auto?: AutomationContext
+  auto?: AutomationContext,
 ) {
   await prisma.activityLog.create({
     data: {
@@ -85,7 +87,7 @@ export async function createCard(
   data: CreateCardData,
   actor: Actor | null,
   auto?: AutomationContext,
-  opts: { creationNote?: string } = {}
+  opts: { creationNote?: string } = {},
 ): Promise<Card> {
   const list = await prisma.list.findUnique({
     where: { id: data.listId },
@@ -96,7 +98,7 @@ export async function createCard(
     throw new PermissionError(
       list.board.type === "opportunity"
         ? "Apenas vendas, gestores e admins criam oportunidades."
-        : "Apenas gestores e admins criam cards de projeto."
+        : "Apenas gestores e admins criam cards de projeto.",
     );
   }
 
@@ -119,11 +121,10 @@ export async function createCard(
     sourceCardId: data.sourceCardId ?? null,
   } satisfies Card;
 
-  await assertCompliance(
-    "card.create",
-    cardContext(proposed, { toList: list, openTasks: 0 }),
-    { actorId: actor?.id ?? null, action: { kind: "card.create", title: data.title } }
-  );
+  await assertCompliance("card.create", cardContext(proposed, { toList: list, openTasks: 0 }), {
+    actorId: actor?.id ?? null,
+    action: { kind: "card.create", title: data.title },
+  });
 
   const last = await prisma.card.findFirst({
     where: { listId: list.id },
@@ -157,7 +158,7 @@ export async function createCard(
     "card.created",
     null,
     { title: card.title, list: list.name, note: opts.creationNote ?? null },
-    auto
+    auto,
   );
 
   await dispatch(
@@ -168,7 +169,7 @@ export async function createCard(
       actorId: actor?.id ?? null,
       toListId: list.id,
     },
-    auto?.depth ?? 0
+    auto?.depth ?? 0,
   );
 
   return card;
@@ -191,10 +192,13 @@ export async function updateCard(
   cardId: string,
   patch: CardPatch,
   actor: Actor | null,
-  auto?: AutomationContext
+  auto?: AutomationContext,
 ): Promise<Card> {
   const card = await requireCard(cardId);
-  if (actor && !(await canEditCard(actor.id, card.board.key === "sales" ? "opportunity" : "project", card))) {
+  if (
+    actor &&
+    !(await canEditCard(actor.id, card.board.key === "sales" ? "opportunity" : "project", card))
+  ) {
     throw new PermissionError("Você só edita cards em que é responsável.");
   }
 
@@ -236,15 +240,18 @@ export async function updateCard(
     actor?.id ?? null,
     "card.updated",
     Object.fromEntries(
-      changedFields.map((k) => [k, card[k] instanceof Date ? card[k].toISOString() : (card[k] as never)])
+      changedFields.map((k) => [
+        k,
+        card[k] instanceof Date ? card[k].toISOString() : (card[k] as never),
+      ]),
     ) as Prisma.InputJsonValue,
     Object.fromEntries(
       changedFields.map((k) => {
         const v = patch[k];
         return [k, v instanceof Date ? v.toISOString() : (v as never)];
-      })
+      }),
     ) as Prisma.InputJsonValue,
-    auto
+    auto,
   );
 
   for (const field of changedFields) {
@@ -256,7 +263,7 @@ export async function updateCard(
         actorId: actor?.id ?? null,
         field,
       },
-      auto?.depth ?? 0
+      auto?.depth ?? 0,
     );
   }
   return updated;
@@ -267,7 +274,7 @@ export async function moveCard(
   /** `lossReason` (US-14) é gravado junto com o movimento: se ele for recusado, nada fica. */
   target: { toListId: string; index?: number; lossReason?: string },
   actor: Actor | null,
-  auto?: AutomationContext
+  auto?: AutomationContext,
 ): Promise<Card> {
   const stored = await requireCard(cardId);
   const lossReason = target.lossReason?.trim() || undefined;
@@ -283,7 +290,7 @@ export async function moveCard(
     throw new PermissionError(
       toList.board.type === "opportunity"
         ? "Apenas vendas, gestores e admins movem oportunidades."
-        : "Apenas gestores e admins movem cards de projeto."
+        : "Apenas gestores e admins movem cards de projeto.",
     );
   }
 
@@ -309,7 +316,7 @@ export async function moveCard(
     select: { position: true },
   });
   const index = Math.max(0, Math.min(target.index ?? siblings.length, siblings.length));
-  const before = index > 0 ? siblings[index - 1]?.position ?? 0 : 0;
+  const before = index > 0 ? (siblings[index - 1]?.position ?? 0) : 0;
   const after = siblings[index]?.position ?? before + 2048;
   const position = (before + after) / 2;
 
@@ -320,10 +327,23 @@ export async function moveCard(
   });
 
   if (reasonChanged) {
-    await log(cardId, actor?.id ?? null, "card.updated", { lossReason: stored.lossReason }, { lossReason }, auto);
+    await log(
+      cardId,
+      actor?.id ?? null,
+      "card.updated",
+      { lossReason: stored.lossReason },
+      { lossReason },
+      auto,
+    );
     await dispatch(
-      { type: "card.field_changed", boardKey: card.board.key, cardId, actorId: actor?.id ?? null, field: "lossReason" },
-      auto?.depth ?? 0
+      {
+        type: "card.field_changed",
+        boardKey: card.board.key,
+        cardId,
+        actorId: actor?.id ?? null,
+        field: "lossReason",
+      },
+      auto?.depth ?? 0,
     );
   }
 
@@ -334,7 +354,7 @@ export async function moveCard(
       "card.moved",
       { list: card.list.name },
       { list: toList.name },
-      auto
+      auto,
     );
     await dispatch(
       {
@@ -345,7 +365,7 @@ export async function moveCard(
         fromListId: card.listId,
         toListId: toList.id,
       },
-      auto?.depth ?? 0
+      auto?.depth ?? 0,
     );
   }
   return updated;
@@ -379,7 +399,7 @@ export async function addComment(
   cardId: string,
   text: string,
   actor: Actor | null,
-  auto?: AutomationContext
+  auto?: AutomationContext,
 ): Promise<void> {
   await requireCard(cardId);
   await log(cardId, actor?.id ?? null, "comment", null, { text }, auto);
@@ -429,7 +449,7 @@ async function uniqueStageKey(boardId: string, name: string): Promise<string> {
 export async function createList(
   boardId: string,
   data: { name: string; color?: string | null },
-  actor: Actor
+  actor: Actor,
 ) {
   await assertListManager(actor);
   const name = data.name.trim();
@@ -458,7 +478,7 @@ export async function createList(
 export async function updateList(
   listId: string,
   patch: { name?: string; color?: string | null },
-  actor: Actor
+  actor: Actor,
 ) {
   await assertListManager(actor);
   const list = await prisma.list.findUnique({ where: { id: listId } });
@@ -484,7 +504,7 @@ export async function deleteList(listId: string, moveToListId: string | null, ac
 
   if (list.semantics) {
     throw new PermissionError(
-      "Esta coluna tem função no fluxo (fechamento, perda, conclusão ou atraso) e não pode ser excluída. Você pode renomeá-la."
+      "Esta coluna tem função no fluxo (fechamento, perda, conclusão ou atraso) e não pode ser excluída. Você pode renomeá-la.",
     );
   }
 
@@ -494,7 +514,7 @@ export async function deleteList(listId: string, moveToListId: string | null, ac
   if (list._count.cards > 0) {
     if (!moveToListId) {
       throw new PermissionError(
-        `Esta coluna tem ${list._count.cards} card(s). Escolha para onde movê-los antes de excluir.`
+        `Esta coluna tem ${list._count.cards} card(s). Escolha para onde movê-los antes de excluir.`,
       );
     }
     const target = await prisma.list.findUnique({ where: { id: moveToListId } });
@@ -518,7 +538,7 @@ export async function reorderLists(boardId: string, orderedIds: string[], actor:
     throw new PermissionError("A ordem enviada não corresponde às colunas do quadro.");
   }
   await prisma.$transaction(
-    orderedIds.map((id, i) => prisma.list.update({ where: { id }, data: { position: i + 1 } }))
+    orderedIds.map((id, i) => prisma.list.update({ where: { id }, data: { position: i + 1 } })),
   );
 }
 
@@ -582,10 +602,13 @@ export async function createTask(
   cardId: string,
   data: { title: string; dueDate: Date | null; assigneeId?: string | null },
   actor: Actor | null,
-  auto?: AutomationContext
+  auto?: AutomationContext,
 ) {
   const card = await requireCard(cardId);
-  if (actor && !(await canManageTasks(actor.id, card.board.key === "sales" ? "opportunity" : "project", card))) {
+  if (
+    actor &&
+    !(await canManageTasks(actor.id, card.board.key === "sales" ? "opportunity" : "project", card))
+  ) {
     throw new PermissionError("Você só adiciona tarefas em cards que pode editar.");
   }
 
@@ -593,9 +616,13 @@ export async function createTask(
     "task.create",
     cardContext(card, {
       toList: card.list,
-      task: { title: data.title, dueDate: data.dueDate as Date, assigneeId: data.assigneeId ?? null },
+      task: {
+        title: data.title,
+        dueDate: data.dueDate as Date,
+        assigneeId: data.assigneeId ?? null,
+      },
     }),
-    { cardId, actorId: actor?.id ?? null, action: { kind: "task.create", title: data.title } }
+    { cardId, actorId: actor?.id ?? null, action: { kind: "task.create", title: data.title } },
   );
   if (!data.dueDate) {
     // Nunca deveria chegar aqui (a regra nativa bloqueia antes); NOT NULL é a rede final.
@@ -626,7 +653,7 @@ export async function createTask(
       actorId: actor?.id ?? null,
       taskId: task.id,
     },
-    auto?.depth ?? 0
+    auto?.depth ?? 0,
   );
   return task;
 }
@@ -635,12 +662,15 @@ export async function updateTask(
   taskId: string,
   patch: Partial<{ title: string; dueDate: Date; assigneeId: string | null }>,
   actor: Actor | null,
-  auto?: AutomationContext
+  auto?: AutomationContext,
 ) {
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) throw new NotFoundError("Tarefa não encontrada.");
   const card = await requireCard(task.cardId);
-  if (actor && !(await canManageTasks(actor.id, card.board.key === "sales" ? "opportunity" : "project", card))) {
+  if (
+    actor &&
+    !(await canManageTasks(actor.id, card.board.key === "sales" ? "opportunity" : "project", card))
+  ) {
     throw new PermissionError("Você só edita tarefas de cards que pode editar.");
   }
 
@@ -654,11 +684,18 @@ export async function updateTask(
         assigneeId: patch.assigneeId === undefined ? task.assigneeId : patch.assigneeId,
       },
     }),
-    { cardId: card.id, actorId: actor?.id ?? null, action: { kind: "task.update", taskId } }
+    { cardId: card.id, actorId: actor?.id ?? null, action: { kind: "task.update", taskId } },
   );
 
   const updated = await prisma.task.update({ where: { id: taskId }, data: patch });
-  await log(card.id, actor?.id ?? null, "task.updated", { title: task.title }, { title: updated.title }, auto);
+  await log(
+    card.id,
+    actor?.id ?? null,
+    "task.updated",
+    { title: task.title },
+    { title: updated.title },
+    auto,
+  );
   return updated;
 }
 
@@ -674,13 +711,9 @@ export async function toggleTask(taskId: string, done: boolean, actor: Actor | n
     where: { id: taskId },
     data: { done, completedAt: done ? new Date() : null },
   });
-  await log(
-    card.id,
-    actor?.id ?? null,
-    done ? "task.completed" : "task.reopened",
-    null,
-    { title: task.title }
-  );
+  await log(card.id, actor?.id ?? null, done ? "task.completed" : "task.reopened", null, {
+    title: task.title,
+  });
   if (done) {
     await dispatch({
       type: "task.completed",
@@ -697,7 +730,10 @@ export async function deleteTask(taskId: string, actor: Actor | null) {
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) throw new NotFoundError("Tarefa não encontrada.");
   const card = await requireCard(task.cardId);
-  if (actor && !(await canManageTasks(actor.id, card.board.key === "sales" ? "opportunity" : "project", card))) {
+  if (
+    actor &&
+    !(await canManageTasks(actor.id, card.board.key === "sales" ? "opportunity" : "project", card))
+  ) {
     throw new PermissionError("Você só remove tarefas de cards que pode editar.");
   }
   await prisma.task.delete({ where: { id: taskId } });
@@ -706,12 +742,15 @@ export async function deleteTask(taskId: string, actor: Actor | null) {
 
 export async function reorderTasks(cardId: string, orderedIds: string[], actor: Actor | null) {
   const card = await requireCard(cardId);
-  if (actor && !(await canManageTasks(actor.id, card.board.key === "sales" ? "opportunity" : "project", card))) {
+  if (
+    actor &&
+    !(await canManageTasks(actor.id, card.board.key === "sales" ? "opportunity" : "project", card))
+  ) {
     throw new PermissionError("Você só reordena tarefas de cards que pode editar.");
   }
   await prisma.$transaction(
     orderedIds.map((id, i) =>
-      prisma.task.update({ where: { id, cardId }, data: { position: (i + 1) * 1024 } })
-    )
+      prisma.task.update({ where: { id, cardId }, data: { position: (i + 1) * 1024 } }),
+    ),
   );
 }

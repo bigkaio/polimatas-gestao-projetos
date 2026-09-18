@@ -29,8 +29,8 @@ export function NavLinks({ mobile = false }: { mobile?: boolean }) {
               "rounded-lg px-3 py-1.5 text-sm font-medium transition",
               mobile && "whitespace-nowrap",
               active
-                ? "bg-cyan-400/10 text-cyan-400"
-                : "text-gray-300 hover:bg-white/10 hover:text-white"
+                ? "bg-accent/10 text-accent"
+                : "text-fg-2 hover:bg-tint/10 hover:text-fg"
             )}
           >
             {item.label}

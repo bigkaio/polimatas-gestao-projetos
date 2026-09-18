@@ -48,7 +48,7 @@ const SCOPE_LABELS: Record<string, string> = {
 };
 
 const inputCls =
-  "rounded-lg border border-white/15 px-2 py-1.5 text-sm focus:border-cyan-400 focus:outline-none";
+  "rounded-lg border border-line/15 px-2 py-1.5 text-sm focus:border-accent focus:outline-none";
 
 export function CompliancePage({
   rules,
@@ -79,21 +79,21 @@ export function CompliancePage({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="text-3xl font-light tracking-tight text-white">Compliance</h1>
-      <p className="text-sm text-gray-400">
+      <h1 className="text-3xl font-light tracking-tight text-fg">Compliance</h1>
+      <p className="text-sm text-fg-3">
         Regras que o sistema <strong>impõe no servidor</strong> — não são avisos: a ação fora do
         padrão é recusada e nada é gravado.
       </p>
 
       <ul className="mt-6 space-y-3">
         {rules.map((rule) => (
-          <li key={rule.id} className="rounded-2xl border border-white/10 bg-[#141413] p-4 shadow-sm">
+          <li key={rule.id} className="rounded-2xl border border-line/10 bg-surface p-4 shadow-sm">
             <div className="flex flex-wrap items-start gap-3">
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">
                   {rule.name}
                   {rule.isSystem ? (
-                    <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                    <span className="ml-2 rounded-full bg-danger/15 px-2 py-0.5 text-xs font-medium text-danger">
                       obrigatória
                     </span>
                   ) : null}
@@ -101,14 +101,14 @@ export function CompliancePage({
                     className={clsx(
                       "ml-2 rounded-full px-2 py-0.5 text-xs font-medium",
                       rule.severity === "block"
-                        ? "bg-white text-black"
-                        : "bg-amber-400/15 text-amber-300"
+                        ? "bg-danger/15 text-danger"
+                        : "bg-warning/15 text-warning"
                     )}
                   >
                     {rule.severity === "block" ? "bloqueia" : "avisa"}
                   </span>
                 </p>
-                <p className="mt-1 text-sm text-gray-300">
+                <p className="mt-1 text-sm text-fg-2">
                   {rule.scope
                     .split(",")
                     .map((s) => SCOPE_LABELS[s.trim()] ?? s)
@@ -120,7 +120,7 @@ export function CompliancePage({
                       : "";
                   })()}
                 </p>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-fg-4">
                   Mensagem: “{rule.message}” · {rule.violationCount} bloqueio(s)/aviso(s)
                 </p>
               </div>
@@ -139,13 +139,13 @@ export function CompliancePage({
                   }}
                   className={clsx(
                     "relative h-6 w-11 rounded-full transition",
-                    rule.enabled ? "bg-emerald-500" : "bg-white/20",
+                    rule.enabled ? "bg-success-solid" : "bg-tint/20",
                     rule.isSystem && "cursor-not-allowed opacity-60"
                   )}
                 >
                   <span
                     className={clsx(
-                      "absolute top-0.5 h-5 w-5 rounded-full bg-[#141413] shadow transition-all",
+                      "absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow transition-all",
                       rule.enabled ? "left-[22px]" : "left-0.5"
                     )}
                   />
@@ -158,7 +158,7 @@ export function CompliancePage({
 
       {canManage ? (
         creating ? (
-          <div className="mt-6 rounded-2xl border border-white/10 bg-[#141413] p-5 shadow-sm">
+          <div className="mt-6 rounded-2xl border border-line/10 bg-surface p-5 shadow-sm">
             <h2 className="font-bold">Nova regra de compliance</h2>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <input
@@ -194,7 +194,7 @@ export function CompliancePage({
               </select>
             </div>
 
-            <p className="mt-4 text-sm font-medium text-gray-200">Quando estas condições valerem:</p>
+            <p className="mt-4 text-sm font-medium text-fg-2">Quando estas condições valerem:</p>
             <ul className="mt-2 space-y-2">
               {form.conditionRules.map((rule, i) => (
                 <li key={i} className="flex flex-wrap items-center gap-2">
@@ -258,7 +258,7 @@ export function CompliancePage({
                         conditionRules: f.conditionRules.filter((_, j) => j !== i),
                       }))
                     }
-                    className="text-gray-500 hover:text-red-400"
+                    className="text-fg-4 hover:text-danger"
                   >
                     ✕
                   </button>
@@ -273,7 +273,7 @@ export function CompliancePage({
                   conditionRules: [...f.conditionRules, { field: "card.type", operator: "is", value: "" }],
                 }))
               }
-              className="mt-2 text-sm font-medium text-cyan-400 hover:underline"
+              className="mt-2 text-sm font-medium text-accent hover:underline"
             >
               + Adicionar condição
             </button>
@@ -282,7 +282,7 @@ export function CompliancePage({
               <button
                 type="button"
                 onClick={() => setCreating(false)}
-                className="rounded-full px-4 py-2 text-sm text-gray-300 hover:bg-[#141413]/10"
+                className="rounded-full px-4 py-2 text-sm text-fg-2 hover:bg-tint/10"
               >
                 Cancelar
               </button>
@@ -310,7 +310,7 @@ export function CompliancePage({
                   setForm({ name: "", scope: "card.move", message: "", severity: "block", conditionRules: [] });
                   refresh();
                 }}
-                className="rounded-full bg-cyan-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                className="rounded-full bg-accent-solid px-4 py-2 text-sm font-medium text-accent-fg disabled:opacity-50"
               >
                 Criar regra
               </button>
@@ -320,7 +320,7 @@ export function CompliancePage({
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="mt-6 rounded-full bg-cyan-500 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-400"
+            className="mt-6 rounded-full bg-accent-solid px-4 py-2 text-sm font-medium text-accent-fg hover:bg-accent-solid-hover"
           >
             + Nova regra de compliance
           </button>
@@ -328,23 +328,23 @@ export function CompliancePage({
       ) : null}
 
       {/* Log de bloqueios (US-34) */}
-      <h2 className="mt-10 text-xl font-light text-white">O que o sistema impediu</h2>
-      <p className="text-sm text-gray-400">Prova viva de que as regras bloqueiam — quem tentou, o quê e quando.</p>
-      <ul className="mt-3 divide-y divide-white/5 rounded-2xl border border-white/10 bg-[#141413]">
+      <h2 className="mt-10 text-xl font-light text-fg">O que o sistema impediu</h2>
+      <p className="text-sm text-fg-3">Prova viva de que as regras bloqueiam — quem tentou, o quê e quando.</p>
+      <ul className="mt-3 divide-y divide-white/5 rounded-2xl border border-line/10 bg-surface">
         {violations.length === 0 ? (
-          <li className="px-4 py-8 text-center text-sm text-gray-500">
+          <li className="px-4 py-8 text-center text-sm text-fg-4">
             Nenhum bloqueio registrado ainda — tente criar uma tarefa sem prazo. 😉
           </li>
         ) : (
           violations.map((v) => (
             <li key={v.id} className="flex flex-wrap items-center gap-2 px-4 py-3 text-sm">
-              <span className="font-medium text-gray-100">{v.ruleName}</span>
-              <span className="text-gray-400">
+              <span className="font-medium text-fg">{v.ruleName}</span>
+              <span className="text-fg-3">
                 — {v.actorName ?? "automação"} em{" "}
                 {v.card ? (
                   <Link
                     href={`/board/${v.card.boardKey}/card/${v.card.id}`}
-                    className="text-cyan-400 hover:underline"
+                    className="text-accent hover:underline"
                   >
                     {v.card.title}
                   </Link>
@@ -352,7 +352,7 @@ export function CompliancePage({
                   "card removido"
                 )}
               </span>
-              <span className="ml-auto text-xs text-gray-500">{relativeTime(v.createdAt)}</span>
+              <span className="ml-auto text-xs text-fg-4">{relativeTime(v.createdAt)}</span>
             </li>
           ))
         )}

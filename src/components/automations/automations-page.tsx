@@ -10,8 +10,9 @@ import {
   testAutomationAction,
   toggleAutomationAction,
 } from "@/app/actions/automations";
-import { automationSchema, type AutomationInput } from "@/core/rules";
+import { automationReadSchema, type AutomationInput } from "@/core/rules";
 import { humanizeRule, type ListRef } from "@/lib/humanize";
+import type { SampleCard } from "@/lib/template-vars";
 import { useToast } from "@/components/toast";
 import { AutomationBuilder } from "./builder";
 
@@ -32,25 +33,31 @@ type UserRef = { id: string; name: string; hasWhatsApp?: boolean };
 /** Largura fixa: as ações ficam alinhadas entre um card e outro. A cor fica
  *  por conta de cada botão — misturar as duas aqui gera conflito no clsx. */
 const actionCls = "w-20 shrink-0 rounded-lg py-1 text-center text-sm transition";
-const neutralAction = `${actionCls} text-gray-400 hover:bg-white/10`;
+const neutralAction = `${actionCls} text-fg-3 hover:bg-tint/10`;
 
 export function AutomationsPage({
   automations,
   lists,
   users,
   cards,
+  sample,
   canManage,
 }: {
   automations: AutomationDTO[];
   lists: ListRef[];
   users: UserRef[];
   cards: CardRef[];
+  /** Card real usado na pré-visualização das mensagens. */
+  sample: SampleCard | null;
   canManage: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [, startTransition] = useTransition();
-  const [editing, setEditing] = useState<{ id: string | null; initial: AutomationInput | null } | null>(null);
+  const [editing, setEditing] = useState<{
+    id: string | null;
+    initial: AutomationInput | null;
+  } | null>(null);
   const [testing, setTesting] = useState<AutomationDTO | null>(null);
   const [testCard, setTestCard] = useState("");
   const [testResult, setTestResult] = useState<{ matched: boolean; lines: string[] } | null>(null);
@@ -58,11 +65,17 @@ export function AutomationsPage({
   const refresh = () => startTransition(() => router.refresh());
 
   const describe = (a: AutomationDTO): string => {
-    const parsed = automationSchema
+    const parsed = automationReadSchema
       .pick({ trigger: true, conditions: true, actions: true })
       .safeParse({ trigger: a.trigger, conditions: a.conditions, actions: a.actions });
     if (!parsed.success) return "Regra com formato inválido.";
-    return humanizeRule(parsed.data.trigger, parsed.data.conditions, parsed.data.actions, lists, users);
+    return humanizeRule(
+      parsed.data.trigger,
+      parsed.data.conditions,
+      parsed.data.actions,
+      lists,
+      users,
+    );
   };
 
   const openEdit = (a: AutomationDTO | null) => {
@@ -70,14 +83,19 @@ export function AutomationsPage({
       setEditing({ id: null, initial: null });
       return;
     }
-    const parsed = automationSchema.safeParse({
+    const parsed = automationReadSchema.safeParse({
       name: a.name,
       enabled: a.enabled,
       trigger: a.trigger,
       conditions: a.conditions,
       actions: a.actions,
     });
-    setEditing({ id: a.id, initial: parsed.success ? parsed.data : null });
+    if (!parsed.success) {
+      // Abrir o construtor vazio faria a pessoa achar que perdeu a regra.
+      toast(`"${a.name}" está gravada num formato que esta tela não reconhece.`, "error");
+      return;
+    }
+    setEditing({ id: a.id, initial: parsed.data });
   };
 
   if (editing) {
@@ -85,6 +103,7 @@ export function AutomationsPage({
       <AutomationBuilder
         lists={lists}
         users={users}
+        sample={sample}
         initial={editing.initial}
         isSystem={automations.find((a) => a.id === editing.id)?.isSystem ?? false}
         onCancel={() => setEditing(null)}
@@ -106,15 +125,15 @@ export function AutomationsPage({
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-light tracking-tight text-white">Automações</h1>
-          <p className="text-sm text-gray-400">
+          <h1 className="text-3xl font-light tracking-tight text-fg">Automações</h1>
+          <p className="text-sm text-fg-3">
             O que o sistema faz sozinho — regras criadas aqui, sem escrever código.
           </p>
         </div>
         <div className="flex gap-2">
           <a
             href="/automations/runs"
-            className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 hover:bg-[#141413]/5"
+            className="rounded-full border border-line/15 px-4 py-2 text-sm font-medium text-fg-2 hover:bg-tint/5"
           >
             Histórico de execuções
           </a>
@@ -122,7 +141,7 @@ export function AutomationsPage({
             <button
               type="button"
               onClick={() => openEdit(null)}
-              className="rounded-full bg-cyan-500 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-400"
+              className="rounded-full bg-accent-solid px-4 py-2 text-sm font-medium text-accent-fg hover:bg-accent-solid-hover"
             >
               + Nova automação
             </button>
@@ -132,19 +151,19 @@ export function AutomationsPage({
 
       <ul className="mt-6 space-y-3">
         {automations.map((a) => (
-          <li key={a.id} className="rounded-2xl border border-white/10 bg-[#141413] p-4 shadow-sm">
+          <li key={a.id} className="rounded-2xl border border-line/10 bg-surface p-4 shadow-sm">
             <div className="flex flex-wrap items-start gap-3">
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">
                   {a.name}
                   {a.isSystem ? (
-                    <span className="ml-2 rounded-full bg-cyan-400/15 px-2 py-0.5 text-xs font-medium text-cyan-300">
+                    <span className="ml-2 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent">
                       nativa
                     </span>
                   ) : null}
                 </p>
-                <p className="mt-1 text-sm text-gray-300">{describe(a)}</p>
-                <p className="mt-1 text-xs text-gray-500">{a.runCount} execução(ões)</p>
+                <p className="mt-1 text-sm text-fg-2">{describe(a)}</p>
+                <p className="mt-1 text-xs text-fg-4">{a.runCount} execução(ões)</p>
               </div>
               {canManage ? (
                 <div className="flex shrink-0 items-center gap-1">
@@ -160,13 +179,13 @@ export function AutomationsPage({
                     }}
                     className={clsx(
                       "relative h-6 w-11 rounded-full transition",
-                      a.enabled ? "bg-emerald-500" : "bg-white/20"
+                      a.enabled ? "bg-success-solid" : "bg-tint/20",
                     )}
                   >
                     <span
                       className={clsx(
-                        "absolute top-0.5 h-5 w-5 rounded-full bg-[#141413] shadow transition-all",
-                        a.enabled ? "left-[22px]" : "left-0.5"
+                        "absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow transition-all",
+                        a.enabled ? "left-[22px]" : "left-0.5",
                       )}
                     />
                   </button>
@@ -181,11 +200,7 @@ export function AutomationsPage({
                   >
                     Testar
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => openEdit(a)}
-                    className={neutralAction}
-                  >
+                  <button type="button" onClick={() => openEdit(a)} className={neutralAction}>
                     Editar
                   </button>
                   <button
@@ -215,8 +230,8 @@ export function AutomationsPage({
                     className={clsx(
                       actionCls,
                       a.isSystem
-                        ? "cursor-not-allowed text-gray-600"
-                        : "text-red-400 hover:bg-red-500/10"
+                        ? "cursor-not-allowed text-fg-5"
+                        : "text-danger hover:bg-danger/10",
                     )}
                   >
                     Excluir
@@ -229,16 +244,17 @@ export function AutomationsPage({
       </ul>
 
       {testing ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#141420] p-6 shadow-2xl">
-            <h2 className="text-xl font-light text-white">Testar “{testing.name}”</h2>
-            <p className="mt-1 text-sm text-gray-400">
-              Simulação: mostra o que a regra <strong>faria</strong> com o card escolhido — nada é executado.
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/70 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-line/10 bg-surface-2 p-6 shadow-2xl">
+            <h2 className="text-xl font-light text-fg">Testar “{testing.name}”</h2>
+            <p className="mt-1 text-sm text-fg-3">
+              Simulação: mostra o que a regra <strong>faria</strong> com o card escolhido — nada é
+              executado.
             </p>
             <select
               value={testCard}
               onChange={(e) => setTestCard(e.target.value)}
-              className="mt-4 w-full rounded-lg border border-white/15 px-3 py-2 text-sm"
+              className="mt-4 w-full rounded-lg border border-line/15 px-3 py-2 text-sm"
             >
               <option value="">Escolha um card…</option>
               {cards.map((c) => (
@@ -251,7 +267,7 @@ export function AutomationsPage({
               <div
                 className={clsx(
                   "mt-4 rounded-lg p-3 text-sm",
-                  testResult.matched ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"
+                  testResult.matched ? "bg-success/10 text-success" : "bg-warning/10 text-warning",
                 )}
               >
                 {testResult.matched ? (
@@ -272,7 +288,7 @@ export function AutomationsPage({
               <button
                 type="button"
                 onClick={() => setTesting(null)}
-                className="rounded-full px-4 py-2 text-sm text-gray-300 hover:bg-[#141413]/10"
+                className="rounded-full px-4 py-2 text-sm text-fg-2 hover:bg-tint/10"
               >
                 Fechar
               </button>
@@ -290,7 +306,7 @@ export function AutomationsPage({
                     lines: r.data!.outcomes.map((o) => o.detail ?? o.action),
                   });
                 }}
-                className="rounded-full bg-cyan-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                className="rounded-full bg-accent-solid px-4 py-2 text-sm font-medium text-accent-fg disabled:opacity-50"
               >
                 Simular
               </button>

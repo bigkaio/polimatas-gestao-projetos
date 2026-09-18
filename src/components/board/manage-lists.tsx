@@ -39,7 +39,7 @@ function Palette({
           className={clsx(
             "h-6 w-6 rounded-full border-2 transition disabled:opacity-40",
             LIST_COLORS[c].dot,
-            value === c ? "border-white" : "border-transparent hover:border-white/40"
+            value === c ? "border-line" : "border-transparent hover:border-line/40"
           )}
         />
       ))}
@@ -111,7 +111,7 @@ export function ManageLists({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-gray-300 transition hover:bg-white/10 hover:text-white"
+        className="rounded-full border border-line/15 px-3 py-1.5 text-sm text-fg-2 transition hover:bg-tint/10 hover:text-fg"
       >
         Personalizar colunas
       </button>
@@ -119,12 +119,12 @@ export function ManageLists({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 md:p-8">
-      <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-[#0f1016] p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-overlay/70 p-4 md:p-8">
+      <div className="w-full max-w-2xl rounded-2xl border border-line/10 bg-surface-2 p-6 shadow-2xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-light text-white">Colunas do quadro</h2>
-            <p className="text-sm text-gray-400">
+            <h2 className="text-xl font-light text-fg">Colunas do quadro</h2>
+            <p className="text-sm text-fg-3">
               Renomeie, recolora, reordene e crie colunas. As de função especial não podem ser
               excluídas.
             </p>
@@ -133,7 +133,7 @@ export function ManageLists({
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Fechar"
-            className="rounded-lg p-2 text-gray-500 hover:bg-white/10 hover:text-gray-300"
+            className="rounded-lg p-2 text-fg-4 hover:bg-tint/10 hover:text-fg-2"
           >
             ✕
           </button>
@@ -147,7 +147,7 @@ export function ManageLists({
             return (
               <li
                 key={list.id}
-                className="rounded-xl border border-white/10 bg-[#141413] p-3"
+                className="rounded-xl border border-line/10 bg-surface p-3"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={clsx("h-3 w-3 shrink-0 rounded-full", LIST_COLORS[cor].dot)} />
@@ -157,16 +157,16 @@ export function ManageLists({
                     aria-label={`Nome da coluna ${list.name}`}
                     onBlur={(e) => rename(list, e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                    className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm text-gray-100 hover:border-white/10 focus:border-cyan-400 focus:outline-none"
+                    className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm text-fg hover:border-line/10 focus:border-accent focus:outline-none"
                   />
-                  <span className="shrink-0 text-xs text-gray-500">{count} card(s)</span>
+                  <span className="shrink-0 text-xs text-fg-4">{count} card(s)</span>
                   <span className="flex shrink-0">
                     <button
                       type="button"
                       aria-label="Mover para a esquerda"
                       onClick={() => move(i, -1)}
                       disabled={pending || i === 0}
-                      className="px-1 text-gray-500 hover:text-gray-200 disabled:opacity-30"
+                      className="px-1 text-fg-4 hover:text-fg-2 disabled:opacity-30"
                     >
                       ←
                     </button>
@@ -175,7 +175,7 @@ export function ManageLists({
                       aria-label="Mover para a direita"
                       onClick={() => move(i, 1)}
                       disabled={pending || i === lists.length - 1}
-                      className="px-1 text-gray-500 hover:text-gray-200 disabled:opacity-30"
+                      className="px-1 text-fg-4 hover:text-fg-2 disabled:opacity-30"
                     >
                       →
                     </button>
@@ -192,8 +192,8 @@ export function ManageLists({
                     className={clsx(
                       "shrink-0 rounded-lg px-2 py-1 text-sm",
                       protegida
-                        ? "cursor-not-allowed text-gray-600"
-                        : "text-red-400 hover:bg-red-500/10"
+                        ? "cursor-not-allowed text-fg-5"
+                        : "text-danger hover:bg-danger/10"
                     )}
                   >
                     Excluir
@@ -203,15 +203,15 @@ export function ManageLists({
                 <div className="mt-2 flex flex-wrap items-center gap-3 pl-5">
                   <Palette value={cor} onPick={(c) => recolor(list, c)} disabled={pending} />
                   {protegida ? (
-                    <span className="text-xs text-gray-500">
-                      função no fluxo: <strong className="text-gray-400">{list.semantics}</strong>
+                    <span className="text-xs text-fg-4">
+                      função no fluxo: <strong className="text-fg-3">{list.semantics}</strong>
                     </span>
                   ) : null}
                 </div>
 
                 {confirmDelete?.id === list.id ? (
-                  <div className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/5 p-3">
-                    <p className="text-sm text-amber-200">
+                  <div className="mt-3 rounded-lg border border-warning/30 bg-warning/5 p-3">
+                    <p className="text-sm text-warning">
                       Esta coluna tem {count} card(s). Para onde mover antes de excluir?
                     </p>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -220,7 +220,7 @@ export function ManageLists({
                         onChange={(e) =>
                           setConfirmDelete({ id: list.id, moveTo: e.target.value })
                         }
-                        className="min-w-0 max-w-[14rem] flex-1 truncate rounded-lg border border-white/15 bg-[#0b0f19] px-2 py-1.5 text-sm text-gray-100"
+                        className="min-w-0 max-w-[14rem] flex-1 truncate rounded-lg border border-line/15 bg-field px-2 py-1.5 text-sm text-fg"
                       >
                         {lists
                           .filter((l) => l.id !== list.id)
@@ -243,14 +243,14 @@ export function ManageLists({
                             "Coluna excluída e cards movidos."
                           )
                         }
-                        className="rounded-full bg-red-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-red-400 disabled:opacity-50"
+                        className="rounded-full bg-danger-solid px-4 py-1.5 text-sm font-semibold text-danger-fg hover:bg-danger-solid-hover disabled:opacity-50"
                       >
                         Mover e excluir
                       </button>
                       <button
                         type="button"
                         onClick={() => setConfirmDelete(null)}
-                        className="rounded-full px-3 py-1.5 text-sm text-gray-400 hover:bg-white/10"
+                        className="rounded-full px-3 py-1.5 text-sm text-fg-3 hover:bg-tint/10"
                       >
                         Cancelar
                       </button>
@@ -262,14 +262,14 @@ export function ManageLists({
           })}
         </ul>
 
-        <div className="mt-5 rounded-xl border border-white/10 bg-[#141413] p-3">
-          <p className="text-sm font-medium text-gray-200">Nova coluna</p>
+        <div className="mt-5 rounded-xl border border-line/10 bg-surface p-3">
+          <p className="text-sm font-medium text-fg-2">Nova coluna</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <input
               value={novo.name}
               onChange={(e) => setNovo({ ...novo, name: e.target.value })}
               placeholder="Nome da coluna"
-              className="min-w-0 flex-1 rounded-lg border border-white/15 bg-[#0b0f19] px-3 py-1.5 text-sm text-gray-100 focus:border-cyan-400 focus:outline-none"
+              className="min-w-0 flex-1 rounded-lg border border-line/15 bg-field px-3 py-1.5 text-sm text-fg focus:border-accent focus:outline-none"
             />
             <Palette value={novo.color} onPick={(c) => setNovo({ ...novo, color: c })} />
             <button
@@ -282,7 +282,7 @@ export function ManageLists({
                   return p;
                 }, "Coluna criada.")
               }
-              className="rounded-full bg-cyan-500 px-4 py-1.5 text-sm font-semibold text-black hover:bg-cyan-400 disabled:opacity-40"
+              className="rounded-full bg-accent-solid px-4 py-1.5 text-sm font-semibold text-accent-fg hover:bg-accent-solid-hover disabled:opacity-40"
             >
               Criar
             </button>
